@@ -23,7 +23,7 @@ test('browser administration uses header actions, handles reductions, exports da
     });
     const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto('https://share.js.gripe/');await page.locator('#admin-users button').nth(1).click();await page.locator('#admin-editor form').waitFor();
     await page.getByLabel('图片存储（张）',{exact:true}).fill('1');await page.getByLabel('原因（对应用户可见）').fill('演示：容量调整，提前七天通知');await page.getByRole('button',{name:'保存',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#admin-editor').textContent.includes('生效时间'));assert.equal(change.limits.images,1);assert.equal(change.urgent,false);assert.equal(change.note,'演示：容量调整，提前七天通知');
-    await mkdir('docs/images',{recursive:true});await page.locator('#admin').screenshot({path:'docs/images/admin-preview.png'});
+    if(process.env.ISHARE_CAPTURE_DOCS==='1'){await mkdir('docs/images',{recursive:true});await page.locator('#admin').screenshot({path:'docs/images/admin-preview.png'});}
     await page.locator('#rights-form textarea').fill('请人工复核我的额度');await page.getByRole('button',{name:'提交请求',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#rights-form textarea').value==='');assert.equal(requests,1);
     const download=page.waitForEvent('download');await page.getByRole('button',{name:'导出我的数据',exact:true}).click();assert.equal((await download).suggestedFilename(),'ishare-data.json');
     await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);await context.close();
