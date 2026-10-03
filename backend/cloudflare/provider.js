@@ -7,6 +7,7 @@ export function resourceConfiguration(env,kind) {
   const account=env[p+'_ACCOUNT_ID'],token=env[p+'_API_TOKEN'];
   if(!/^[a-f0-9]{32}$/.test(account||'')||typeof token!=='string'||token.length<10)fail('service_unavailable',503);
   if(kind==='video'&&!/^[a-z0-9]{4,100}$/.test(env.STREAM_CUSTOMER_CODE||''))fail('service_unavailable',503);
+  if(kind==='video'&&!!env.STREAM_SIGNING_KEY!==!!env.STREAM_SIGNING_KEY_ID)fail('service_unavailable',503);
   return {account,token};
 }
 export function provider(env,request=fetch) {
@@ -61,11 +62,13 @@ export function imageAddress(env,item) {
 }
 export async function videoAddress(env,item,now,store,request=fetch) {
   resourceConfiguration(env,'video');providerId(item.provider_id);
-  if(!env.STREAM_SIGNING_KEY&&!env.STREAM_SIGNING_KEY_ID){let token=await store.videoToken(item.id,now);if(!token){token=await provider(env,request).playbackToken(item);await store.saveVideoToken(item.id,token,now+3300);}return new URL(`https://customer-${env.STREAM_CUSTOMER_CODE}.cloudflarestream.com/${token}/manifest/video.m3u8`);}
+  const cached=await store.videoToken(item.id,now);if(cached)return new URL(`https://customer-${env.STREAM_CUSTOMER_CODE}.cloudflarestream.com/${cached}/manifest/video.m3u8`);
+  if(!env.STREAM_SIGNING_KEY&&!env.STREAM_SIGNING_KEY_ID){const token=await provider(env,request).playbackToken(item);await store.saveVideoToken(item.id,token,now+3300);return new URL(`https://customer-${env.STREAM_CUSTOMER_CODE}.cloudflarestream.com/${token}/manifest/video.m3u8`);}
   let jwk;try{jwk=JSON.parse(new TextDecoder().decode(unb64(env.STREAM_SIGNING_KEY)));}catch{fail('service_unavailable',503);}
   const key=await crypto.subtle.importKey('jwk',jwk,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['sign']).catch(()=>fail('service_unavailable',503));
   const header=b64(encoder.encode(JSON.stringify({alg:'RS256',kid:env.STREAM_SIGNING_KEY_ID})));
   const payload=b64(encoder.encode(JSON.stringify({sub:item.provider_id,kid:env.STREAM_SIGNING_KEY_ID,exp:now+7200,nbf:now-30})));
   const token=header+'.'+payload+'.'+b64(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',key,encoder.encode(header+'.'+payload)));
+  await store.saveVideoToken(item.id,token,now+6900);
   return new URL(`https://customer-${env.STREAM_CUSTOMER_CODE}.cloudflarestream.com/${token}/manifest/video.m3u8`);
 }

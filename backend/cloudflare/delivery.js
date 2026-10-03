@@ -20,7 +20,7 @@ export async function sealResource(url,media,secret,expires,seconds=0) {
 export async function openResource(ticket,media,secret,now,env,item) {
   if(!/^[A-Za-z0-9_-]{40,6000}$/.test(ticket))fail('invalid_ticket',404);
   let payload;try{const data=unb64(ticket);payload=JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:data.slice(0,12),additionalData:encoder.encode(media)},await key(secret),data.slice(12))));}catch{fail('invalid_ticket',404);}
-  if(payload.id!==media||!Number.isSafeInteger(payload.exp)||payload.exp<now||payload.exp>now+7200)fail('expired_ticket',404);
+  if(payload.id!==media||!Number.isSafeInteger(payload.exp)||payload.exp<now||payload.exp>now+Math.max(3600,(item.duration||0)+600))fail('expired_ticket',404);
   const url=upstreamUrl(payload.url,null,env);
   if(!Number.isFinite(payload.seconds)||payload.seconds<0||payload.seconds>120)fail('invalid_ticket',404);url.ishareSeconds=payload.seconds;
   try {const token=JSON.parse(new TextDecoder().decode(unb64(url.pathname.split('/')[1].split('.')[1])));if(token.sub!==item.provider_id)fail('invalid_ticket',404);} catch {fail('invalid_ticket',404);}
@@ -52,6 +52,7 @@ export async function deliver(request,env,item,resource,store,context,{requestUp
     upstream=imageAddress(env,item);
   }else {
     upstream=resource==='master.m3u8'?await videoAddress(env,item,now,store,requestProvider):await openResource(resource,item.id,await store.key(),now,env,item);
+    if(resource!=='master.m3u8'){const current=await videoAddress(env,item,now,store,requestProvider);upstream.pathname='/'+current.pathname.split('/')[1]+'/'+upstream.pathname.split('/').slice(2).join('/');}
     manifest=/\.m3u8$/.test(upstream.pathname);
   }
   const range=request.headers.get('range');if(range&&!/^bytes=\d+-\d*$/.test(range))fail('invalid_range',416);
@@ -70,7 +71,7 @@ export async function deliver(request,env,item,resource,store,context,{requestUp
   const resultHeaders=headers({'Content-Type':manifest?'application/vnd.apple.mpegurl':mime,'Cache-Control':manifest?'public, max-age=20':'public, max-age=300','Cross-Origin-Resource-Policy':'cross-origin'},true);
   if(range){for(const name of ['Content-Range','Accept-Ranges'])if(response.headers.has(name))resultHeaders.set(name,response.headers.get(name));}
   let body=response.body;
-  if(manifest){const text=await response.text();body=await rewriteManifest(text,upstream,item.id,await store.key(),now+3600,env);}
+  if(manifest){const text=await response.text();body=await rewriteManifest(text,upstream,item.id,await store.key(),now+Math.max(3600,(item.duration||0)+600),env);}
   const result=new Response(body,{status:response.status,headers:resultHeaders});
   if(!manifest&&!range&&cache)context.waitUntil(cache.put(cacheKey,result.clone()).catch(()=>{}));
   return request.method==='HEAD'?new Response(null,{status:result.status,headers:result.headers}):result;
