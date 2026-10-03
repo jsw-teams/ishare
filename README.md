@@ -2,7 +2,7 @@
 
 Share images and videos with optional text, a stable share page, raw media links and attributed oEmbed embeds. Publishers sign in with GitHub; viewers need no account. Media is public and shareable.
 
-[中文说明](docs/zh-cn.md) / [Quota and privacy operations](docs/operations.md)
+[中文说明](docs/zh-cn.md) / [本站配置说明](docs/configuration.md) / [Quota and privacy operations](docs/operations.md)
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/jsw-teams/ishare)
 
@@ -22,6 +22,8 @@ flowchart LR
 ```
 
 ## Deployment
+
+The JS.GRIPE operator deploys the existing Worker from the private `jsw-teams/web` repository, root `share.js.gripe`. This public repository distributes complete ishare application source; EdgePress is a pinned dependency, without a copied framework source tree. See the [configuration guide](docs/configuration.md) for Git build settings and runtime Secrets.
 
 Use Node 24, run `npm ci`, `npm run build`, `npm test`, then `npm run deploy`. The Cloudflare backend lives in `backend/cloudflare`. One Worker and one SQLite Durable Object hold application metadata; Images and Stream are accessed using API tokens, not resource bindings. They can belong to separate accounts.
 
@@ -60,3 +62,9 @@ Hashed CSS, JavaScript and bundled HLS dependencies cache for one year. Public m
 ## Verification
 
 `npm test` checks ownership, CSRF, direct-upload token handling, atomic quotas, operator exemption, quota notices, suspension/appeal/export/erasure, HLS URL rewriting, browser administration, and real Cloudflare SQLite/RPC/static routing. Browser tests use local fixtures; they do not certify real provider uploads or account configuration.
+
+## Source and deployment
+
+The canonical application directory is `web/share.js.gripe`. The `jsw-teams/ishare` repository receives the complete deployable source from that directory, including EdgePress pages and `/backend/cloudflare`. The operator Worker builds from the private `jsw-teams/web` repository with root directory `share.js.gripe`, running `npm ci` and `npm run deploy`. The public ishare repository distributes the same complete source; it is not the operator Worker deployment source. No cross-repository frontend download or public release artifact is required. Configure actual credentials only as Worker Secrets.
+
+Configure the operator deployment using the [Chinese configuration guide](docs/configuration.md). EdgePress is a pinned dependency; its framework source is not copied into this project.

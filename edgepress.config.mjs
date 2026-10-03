@@ -1,0 +1,1 @@
+export default { paths:{content:'content',static:'.site-static',theme:'themes/share',output:'dist',cache:'.edgepress'},i18n:{defaultLocale:'zh-CN',languagePacks:['en','zh-TW']},plugins:['plugins/application/index.js','plugins/consent/index.js'] };

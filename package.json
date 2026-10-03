@@ -1,6 +1,5 @@
 {
   "name": "@jsw-teams/ishare",
-  "version": "202610.4.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -14,11 +13,13 @@
     "deploy:cloudflare": "npm run deploy"
   },
   "dependencies": {
-    "hls.js": "^1.6.0"
+    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/4d9721f4ecf1a64549ec1ec18fe8ebd3d8ea8b01",
+    "hls.js": "^1.7.3"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",
     "playwright": "^1.63.0",
     "wrangler": "^4.145.0"
-  }
+  },
+  "version": "202610.4.0"
 }

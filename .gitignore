@@ -1,5 +1,7 @@
 node_modules/
 dist/
+.site-static/
+.edgepress/
 .wrangler/
 .dev.vars
 .env

@@ -3,13 +3,12 @@ import {uploadFile} from './upload.js';
 import {adminPanel} from './admin.js';
 import {rightsPanel} from './rights.js';
 const form=document.querySelector('#publish-form'),status=document.querySelector('#status'),library=document.querySelector('#library');
-const locale=document.querySelector('#language');
+const locale={value:language(document.documentElement.lang)};
 let session=null,controller=null,resuming=null,items=[],next=null;
-try{locale.value=language(localStorage.getItem('ishare-language')||navigator.language);}catch{locale.value=language(navigator.language);}
 const t=key=>messages(locale.value)[key]||key;
 function translate(){document.documentElement.lang=locale.value;document.querySelectorAll('[data-i18n]').forEach(node=>node.textContent=t(node.dataset.i18n));}
 function notify(key){status.textContent=t(key);}
-locale.addEventListener('change',()=>{try{localStorage.setItem('ishare-language',locale.value);}catch{}translate();void refresh();});translate();
+translate();
 async function api(action,{resource,body,signal}={}){
   const headers={'X-Service-Action':action};if(resource)headers['X-Service-Resource']=encodeURIComponent(resource);
   if(body){headers['Content-Type']='application/json';headers['X-CSRF-Token']=session?.csrf||'';}

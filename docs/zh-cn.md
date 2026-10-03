@@ -52,3 +52,12 @@ blocks:
 ```
 
 需要访客授权该服务并点击“加载媒体”才发起请求。业务接口固定为 `/api`，操作名和资源 URL 在 HTTP 请求头传递。其他 oEmbed 客户端可使用标准 `/oembed` 发现接口。浏览器播放与查看只看到 `share.js.gripe` 的代理地址，HLS 内部资源也会重写；上传者会看到有时效的一次性上传地址，该地址不是账户凭据或播放地址。
+
+## 前端与部署来源
+
+源码在 `web/share.js.gripe` 维护，完整部署目录直接同步到 `jsw-teams/ishare` 仓库。前端采用 EdgePress，后端位于 `/backend/cloudflare`。实际 Worker 从私有 `jsw-teams/web` 仓库构建，根目录填写 `share.js.gripe`，运行 `npm ci` 与 `npm run deploy`。公开 ishare 仓库仅分发完整源码，不作为本站 Worker 的部署源；不再跨仓库下载页面，也不发布公开前端构建资源。敏感环境只填写 Worker Secrets。
+
+逐项配置请参考 [configuration.md](configuration.md)。EdgePress 通过固定版本依赖引用，不在公开 ishare 仓库重复发布生成器源码。
+
+
+本站部署从 `jsw-teams/web` 的 `share.js.gripe` 目录进行，公开 ishare 库分发应用源码。页面采用固定版本的 EdgePress 依赖，不重复公开框架代码。参见 [具体配置步骤](configuration.md)。
