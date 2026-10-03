@@ -13,7 +13,7 @@
     "deploy:cloudflare": "npm run deploy"
   },
   "dependencies": {
-    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/be7dedde3d96cc81056e62d58d708ce3aecac324",
+    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/c6c4b769e6fe7f93c7095c1fbe2cad586c442db4",
     "hls.js": "^1.7.3"
   },
   "devDependencies": {
