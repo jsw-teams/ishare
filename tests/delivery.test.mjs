@@ -14,7 +14,7 @@ test('HLS playlists rewrite variants, keys, initialization segments and subtitle
   assert.doesNotMatch(result,/cloudflarestream|provider-id|variant\.m3u8|key\.bin|init\.mp4|subtitles/);
   const tickets=[...result.matchAll(/\/v\/[a-f0-9]{32}\/([A-Za-z0-9_-]+)/g)].map(m=>m[1]);assert.equal(tickets.length,4);
   const opened=await Promise.all(tickets.map(t=>openResource(t,item.id,secret,now,env,item)));assert.ok(opened.some(url=>url.pathname.endsWith('/variant.m3u8')));
-  await assert.rejects(openResource(tickets[0].slice(0,-1)+'x',item.id,secret,now,env,item));
+  await assert.rejects(openResource((tickets[0][0]==='A'?'B':'A')+tickets[0].slice(1),item.id,secret,now,env,item));
   await assert.rejects(openResource(tickets[0],'b'.repeat(32),secret,now,env,item));
   await assert.rejects(openResource(tickets[0],item.id,secret,now+3601,env,item));
 });
