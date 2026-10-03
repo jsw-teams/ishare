@@ -33,11 +33,11 @@ GitHub login needs `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and callback `http
 
 ## Quotas and administration
 
-The ordinary-user defaults are 300 images stored, 10,000 images delivered per UTC month, 10 video minutes stored, 100 video minutes delivered per UTC month, 50 uploads per UTC day, 120 seconds per video, and 1 GiB per video. These are application policy defaults, not a Cloudflare free tier. The operator is exempt from all application quotas, including global application budgets. Provider upload/encoding limits still apply: Images accepts at most 10 MB and Stream files must be below 30 GB.
+The ordinary-user defaults are 1,000 images stored, 60 video minutes stored, 50 uploads per UTC day, 10 minutes per video, and 1 GiB per video. Image delivery counts and delivered video duration are operator monitoring metrics, with no ordinary-user delivery caps. These are application policy defaults, not a Cloudflare free tier. The operator is exempt from all application quotas, including global application budgets. Provider upload/encoding limits still apply: Images accepts at most 10 MB and Stream files must be below 30 GB.
 
 After operator login, **User management** appears on the homepage. Select a user to increase individual limits, leave limits blank for unlimited, suspend publishing, restore defaults, inspect media, or remove an individual item. All quota and permission changes require a user-visible reason. Ordinary reductions and suspension receive seven days of notice; explicit urgent abuse restrictions apply immediately. Existing content is not deleted by quota changes. Export, deletion and privacy requests remain available while publishing is suspended.
 
-Global non-operator budgets are configured with `MAX_IMAGES`, `MAX_VIDEO_SECONDS`, `MAX_UPLOADS_PER_DAY`, `MAX_IMAGE_DELIVERIES`, and `MAX_VIDEO_DELIVERY_SECONDS`; per-user defaults may be configured using `QUOTA_` followed by the documented field name. A user-specific increase remains subject to the shared non-operator budget. See [operations](docs/operations.md) for exact accounting, caching and privacy procedures.
+Global non-operator storage and allocation budgets are configured with `MAX_IMAGES`, `MAX_VIDEO_SECONDS`, and `MAX_UPLOADS_PER_DAY`; per-user defaults may be configured using `QUOTA_` followed by the documented field name. A user-specific increase remains subject to the shared non-operator budget. See [operations](docs/operations.md) for exact accounting, caching and privacy procedures.
 
 ## Website integration
 

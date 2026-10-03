@@ -1,6 +1,5 @@
 import { b64, unb64, digest, fail, headers } from './security.js';
 import { imageAddress, videoAddress } from './provider.js';
-import { defaults } from './quotas.js';
 const encoder=new TextEncoder();
 async function key(secret){return crypto.subtle.importKey('raw',unb64(secret),'AES-GCM',false,['encrypt','decrypt']);}
 export function upstreamUrl(value,base,env) {
@@ -57,7 +56,7 @@ export async function deliver(request,env,item,resource,store,context,{requestUp
   }
   const range=request.headers.get('range');if(range&&!/^bytes=\d+-\d*$/.test(range))fail('invalid_range',416);
   if(request.method==='HEAD')return new Response(null,{headers:headers({'Content-Type':manifest?'application/vnd.apple.mpegurl':item.kind==='image'?item.mime||'image/jpeg':'application/octet-stream','Cache-Control':'no-store'},true)});
-  if(request.method!=='HEAD'&&(item.kind==='image'||upstream.ishareSeconds>0))await store.delivery(item.owner,item.kind,item.kind==='image'?1:upstream.ishareSeconds,defaults(env),env.OWNER_GITHUB_ID,Number(item.kind==='image'?env.MAX_IMAGE_DELIVERIES||100000:env.MAX_VIDEO_DELIVERY_SECONDS||60000),now);
+  if(item.kind==='image'||upstream.ishareSeconds>0)await store.delivery(item.owner,item.kind,item.kind==='image'?1:upstream.ishareSeconds,now);
   // Internal cache identities omit expiring signatures; upstream content is immutable per media ID.
   const path=item.kind==='video'?upstream.pathname.split('/').slice(2).join('/')+'?'+upstream.searchParams.toString():'blob';
   const cacheKey=new Request(new URL('/__ishare-cache/'+item.id+'/'+await digest(path),env.SITE_ORIGIN));

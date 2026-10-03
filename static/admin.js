@@ -1,4 +1,4 @@
-const fields=[['images',1],['imageDeliveries',1],['videoSeconds',60],['videoDeliverySeconds',60],['dailyUploads',1],['videoDuration',1],['videoBytes',1_000_000]];
+const fields=[['images',1],['videoSeconds',60],['dailyUploads',1],['videoDuration',1],['videoBytes',1_000_000]];
 export function adminPanel({api,t,notice,refresh}){
   const root=document.querySelector('#admin'),users=document.querySelector('#admin-users'),editor=document.querySelector('#admin-editor'),more=document.querySelector('#admin-more');
   let active=false,cursor=null,isOwner=false;

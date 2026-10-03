@@ -1,13 +1,13 @@
 import { fail } from './security.js';
 
-export const quotaFields=['images','imageDeliveries','videoSeconds','videoDeliverySeconds','dailyUploads','videoDuration','videoBytes'];
+export const quotaFields=['images','videoSeconds','dailyUploads','videoDuration','videoBytes'];
 export function defaults(env={}) {
-  const values={images:300,imageDeliveries:10000,videoSeconds:600,videoDeliverySeconds:6000,dailyUploads:50,videoDuration:120,videoBytes:1_073_741_824};
+  const values={images:1000,videoSeconds:3600,dailyUploads:50,videoDuration:600,videoBytes:1_073_741_824};
   for(const key of quotaFields)if(env['QUOTA_'+key]!==undefined){const n=Number(env['QUOTA_'+key]);if(!Number.isSafeInteger(n)||n<0)fail('invalid_configuration',503);values[key]=n;}
   return values;
 }
 export function policy(record,base,owner=false) {
-  return {blocked:owner?false:!!record?.blocked,unlimited:owner,limits:owner?Object.fromEntries(quotaFields.map(k=>[k,null])):{...base,...JSON.parse(record?.policy||'{}')}};
+  const saved=JSON.parse(record?.policy||'{}');return {blocked:owner?false:!!record?.blocked,unlimited:owner,limits:owner?Object.fromEntries(quotaFields.map(k=>[k,null])):Object.fromEntries(quotaFields.map(k=>[k,Object.hasOwn(saved,k)?saved[k]:base[k]]))};
 }
 export function accountId(value){if(typeof value!=='string'||! /^[1-9][0-9]{0,19}$/.test(value))fail('invalid_user');return value;}
 export function changes(body){

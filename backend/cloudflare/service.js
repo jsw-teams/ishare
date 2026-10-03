@@ -1,4 +1,4 @@
-import { ServiceError, fail, origin, https, text, number, id, random, digest, jsonBody, json } from './security.js';
+import { ServiceError, fail, origin, https, text, number, id, digest, jsonBody, json } from './security.js';
 import { authReady, readSession, requireSite, requireCsrf, authorize, callback, logout } from './auth.js';
 import { provider, resourceConfiguration } from './provider.js';
 import { publicRecord, oembed, shareId, renderPage } from './views.js';
@@ -97,7 +97,7 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
       const sourceUrl=body.sourceUrl?https(body.sourceUrl).href:'';
       const title=text(body.title,200),caption=text(body.caption,5000,true),sourceName=text(body.sourceName,120,true);
       const applicationId=crypto.randomUUID().replaceAll('-','');
-      const item=await store.reserve({id:applicationId,owner:session.user.id,author:session.user,kind:body.kind,title,caption,sourceUrl,sourceName,bytes,mime:body.mime,duration},{defaults:base,ownerId:env.OWNER_GITHUB_ID,images:number(env.MAX_IMAGES,1000,100000),videoSeconds:number(env.MAX_VIDEO_SECONDS,3600,10000000),daily:number(env.MAX_UPLOADS_PER_DAY,500,10000)},now);
+      const item=await store.reserve({id:applicationId,owner:session.user.id,author:session.user,kind:body.kind,title,caption,sourceUrl,sourceName,bytes,mime:body.mime,duration},{defaults:base,ownerId:env.OWNER_GITHUB_ID,images:number(env.MAX_IMAGES,10000,100000),videoSeconds:number(env.MAX_VIDEO_SECONDS,36000,10000000),daily:number(env.MAX_UPLOADS_PER_DAY,500,10000)},now);
       try{const grant=await upstream.create(item,now);await store.attach(applicationId,grant.providerId,grant.uploadUrl,now);return json({id:applicationId,uploadUrl:grant.uploadUrl,protocol:grant.protocol},201);}catch(error){if(error.safeToRelease)await store.failed(applicationId);else await store.uncertain(applicationId);throw error;}
     }
     const mediaId=id(resource(request)),item=await store.get(mediaId);
