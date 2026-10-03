@@ -1,0 +1,28 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "ishare",
+  "main": "backend/cloudflare/worker.js",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "keep_vars": true,
+  "vars": {
+    "SITE_ORIGIN": "https://share.js.gripe",
+    "WEBSITE_ORIGINS": "https://js.gripe,https://connect.js.gripe",
+    "OWNER_GITHUB_ID": "228026986",
+    "MAX_IMAGES": "1000",
+    "MAX_VIDEO_SECONDS": "3600",
+    "MAX_UPLOADS_PER_DAY": "500",
+    "MAX_IMAGE_DELIVERIES": "100000",
+    "MAX_VIDEO_DELIVERY_SECONDS": "60000"
+  },
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/api", "/auth", "/auth/callback", "/oembed", "/s/*", "/embed/*", "/i/*", "/v/*"]
+  },
+  "durable_objects": { "bindings": [{ "name": "SHARE_STORE", "class_name": "ShareStore" }] },
+  "migrations": [{ "tag": "ishare-v1", "new_sqlite_classes": ["ShareStore"] }],
+  "triggers": { "crons": ["17 * * * *"] }
+}
