@@ -44,3 +44,10 @@ test('rights deadlines use a calendar month and account erasure scrubs personal 
   const {store,database}=repository();try{const clock=Date.UTC(2026,0,31,12)/1000;store.makeSession('x',media().author,'csrf',clock);const ticket=store.requestRight('42','rectify','Correct my information',clock);assert.equal(new Date(ticket.due*1000).toISOString(),'2026-02-28T12:00:00.000Z');store.erase('42',clock);store.cleanup(clock+1);assert.equal(store.one('SELECT * FROM users WHERE id=?','42'),null);assert.equal(store.session('x',clock+1),null);assert.equal(store.rights('42').length,0);
   }finally{database.close();}
 });
+
+test('documented sharing suspension stops public delivery without erasing media and can be appealed',async()=>{
+  const {store,database}=repository(),env=environment(store);env.OWNER_GITHUB_ID='99';try{const clock=now(),user=await login(store);store.reserve(media(),limits,clock);store.attach(media().id,'provider-id-123456789012345','https://upload.imagedelivery.net/a',clock);store.publish(media().id,'42',0,clock);store.setAccount('42',{sharingBlocked:true,urgent:true,note:'Documented bulk commercial abuse'},'99','99',clock,base);
+    assert.equal((await handle(request('get',{resource:media().id}),env,ctx)).status,403);assert.equal(store.get(media().id).state,'published');assert.equal((await handle(request('export',user),env,ctx)).status,200);assert.equal((await handle(request('request-right',{...user,body:{kind:'appeal',message:'Please review'}}),env,ctx)).status,201);
+    store.setAccount('42',{sharingBlocked:false,note:'Human review accepted appeal'},'99','99',clock,base);assert.equal((await handle(request('get',{resource:media().id}),env,ctx)).status,200);
+  }finally{database.close();}
+});

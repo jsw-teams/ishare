@@ -17,11 +17,10 @@ test('authentication, CSRF, publisher permissions and ownership protect privileg
     assert.equal(calls,0);
   }finally{database.close();}
 });
-test('direct upload uses the resource account token, signed variants and opaque application IDs',async()=>{
+test('direct upload uses the resource account token, private uploads and opaque application IDs',async()=>{
   const {store,database}=repository(),env=environment(store),owner=await login(store),calls=[];
   const network=async(url,options)=>{
     calls.push({url,options});assert.ok(url.includes('/accounts/'+env.IMAGES_ACCOUNT_ID+'/'));assert.equal(options.headers.Authorization,'Bearer '+env.IMAGES_API_TOKEN);
-    if(url.endsWith('/variants'))return Response.json({success:true,result:{variants:{'ishare-public':{neverRequireSignedURLs:false},'ishare-thumbnail':{neverRequireSignedURLs:false}}}});
     assert.equal(options.body.get('requireSignedURLs'),'true');assert.equal(options.body.get('creator'),'ishare:42');assert.equal(options.body.has('id'),false);
     return Response.json({success:true,result:{id:'provider-id-123456789012345',uploadURL:'https://upload.imagedelivery.net/capability'}});
   };

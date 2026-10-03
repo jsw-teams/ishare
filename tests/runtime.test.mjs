@@ -15,5 +15,7 @@ test('real Cloudflare runtime initializes SQLite and RPC while static assets byp
     const auth=await mf.dispatchFetch('https://share.js.gripe/auth',{redirect:'manual'});assert.equal(auth.status,503);assert.equal((await auth.json()).error,'login_unavailable');
     assert.equal((await mf.dispatchFetch('https://share.js.gripe/.env')).status,404);
     assert.equal((await mf.dispatchFetch('https://share.js.gripe/s/'+'a'.repeat(32))).status,404);
+    for(let i=0;i<9;i++)await mf.dispatchFetch('https://share.js.gripe/auth',{redirect:'manual'});
+    const limited=await mf.dispatchFetch('https://share.js.gripe/auth',{redirect:'manual'});assert.equal(limited.status,429);assert.equal((await limited.json()).error,'rate_limited');
   }finally{await mf.dispose();}
 });

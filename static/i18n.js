@@ -9,5 +9,8 @@ Object.assign(dictionaries["zh-TW"],{"description":"配文（選填）","admin":
 Object.assign(dictionaries.en,{reconcile:'Release reconciled reservation',reconcileConfirm:'Confirm you checked the resource account and removed any media for this failed allocation. This releases the reservation and cannot undo upstream uploads.'});
 Object.assign(dictionaries['zh-CN'],{reconcile:'释放已核对的预留额度',reconcileConfirm:'请确认已在资源账户核对并删除这次未知上传的媒体。此操作仅释放预留额度，不会自动删除上游未知资源。'});
 Object.assign(dictionaries['zh-TW'],{reconcile:'釋放已核對的預留額度',reconcileConfirm:'請確認已在資源帳戶核對並刪除這次未知上傳的媒體。此操作僅釋放預留額度，不會自動刪除上游未知資源。'});
+Object.assign(dictionaries.en,{suspendSharing:'Suspend public sharing for documented abuse (retain stored media)'});
+Object.assign(dictionaries['zh-CN'],{suspendSharing:'因明确滥用暂停公开分享（保留存储媒体）'});
+Object.assign(dictionaries['zh-TW'],{suspendSharing:'因明確濫用暫停公開分享（保留儲存媒體）'});
 export function language(value){if(value==='zh-TW'||value==='zh-HK'||value==='zh-Hant')return 'zh-TW';return value?.startsWith('zh')?'zh-CN':'en';}
 export function messages(value){return dictionaries[language(value)];}

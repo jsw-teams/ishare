@@ -2,44 +2,48 @@ import { DurableObject } from 'cloudflare:workers';
 import { Repository } from './store.js';
 import { handle } from './service.js';
 import { provider } from './provider.js';
+import { ServiceError } from './security.js';
+import { rpcStore } from './rpc.js';
 
 export class ShareStore extends DurableObject {
   constructor(ctx,env){super(ctx,env);this.repository=new Repository(ctx.storage.sql,fn=>ctx.storage.transactionSync(fn));}
-  get(id){return this.repository.get(id);}
-  key(){return this.repository.key();}
-  videoToken(...args){return this.repository.videoToken(...args);}
-  saveVideoToken(...args){return this.repository.saveVideoToken(...args);}
-  rate(...args){return this.repository.rate(...args);}
-  beginAuth(...args){return this.repository.beginAuth(...args);}
-  consumeAuth(...args){return this.repository.consumeAuth(...args);}
-  makeSession(...args){return this.repository.makeSession(...args);}
-  session(...args){return this.repository.session(...args);}
-  account(...args){return this.repository.account(...args);}
-  users(...args){return this.repository.users(...args);}
-  setAccount(...args){return this.repository.setAccount(...args);}
-  audit(){return this.repository.audit();}
-  delivery(...args){return this.repository.delivery(...args);}
-  rights(...args){return this.repository.rights(...args);}
-  requestRight(...args){return this.repository.requestRight(...args);}
-  rightsQueue(){return this.repository.rightsQueue();}
-  resolveRight(...args){return this.repository.resolveRight(...args);}
-  erase(...args){return this.repository.erase(...args);}
-  logout(...args){return this.repository.logout(...args);}
-  reserve(...args){return this.repository.reserve(...args);}
-  attach(...args){return this.repository.attach(...args);}
-  failed(...args){return this.repository.failed(...args);}
-  uncertain(...args){return this.repository.uncertain(...args);}
-  reconcile(...args){return this.repository.reconcile(...args);}
-  publish(...args){return this.repository.publish(...args);}
-  list(...args){return this.repository.list(...args);}
-  markDelete(...args){return this.repository.markDelete(...args);}
-  deleted(...args){return this.repository.deleted(...args);}
-  cleanup(...args){return this.repository.cleanup(...args);}
+  invoke(method,args){try{return this.repository[method](...args);}catch(error){if(error instanceof ServiceError)return {__ishareError:error.message,status:error.status};throw error;}}
+  get(id){return this.invoke('get',[id]);}
+  publicGet(...args){return this.invoke('publicGet',args);}
+  key(){return this.invoke('key',[]);}
+  videoToken(...args){return this.invoke('videoToken',args);}
+  saveVideoToken(...args){return this.invoke('saveVideoToken',args);}
+  rate(...args){return this.invoke('rate',args);}
+  beginAuth(...args){return this.invoke('beginAuth',args);}
+  consumeAuth(...args){return this.invoke('consumeAuth',args);}
+  makeSession(...args){return this.invoke('makeSession',args);}
+  session(...args){return this.invoke('session',args);}
+  account(...args){return this.invoke('account',args);}
+  users(...args){return this.invoke('users',args);}
+  setAccount(...args){return this.invoke('setAccount',args);}
+  audit(){return this.invoke('audit',[]);}
+  delivery(...args){return this.invoke('delivery',args);}
+  rights(...args){return this.invoke('rights',args);}
+  requestRight(...args){return this.invoke('requestRight',args);}
+  rightsQueue(){return this.invoke('rightsQueue',[]);}
+  resolveRight(...args){return this.invoke('resolveRight',args);}
+  erase(...args){return this.invoke('erase',args);}
+  logout(...args){return this.invoke('logout',args);}
+  reserve(...args){return this.invoke('reserve',args);}
+  attach(...args){return this.invoke('attach',args);}
+  failed(...args){return this.invoke('failed',args);}
+  uncertain(...args){return this.invoke('uncertain',args);}
+  reconcile(...args){return this.invoke('reconcile',args);}
+  publish(...args){return this.invoke('publish',args);}
+  list(...args){return this.invoke('list',args);}
+  markDelete(...args){return this.invoke('markDelete',args);}
+  deleted(...args){return this.invoke('deleted',args);}
+  cleanup(...args){return this.invoke('cleanup',args);}
 }
 export default {
   fetch(request,env,ctx){return handle(request,env,ctx);},
   async scheduled(_event,env){
-    const store=env.SHARE_STORE.get(env.SHARE_STORE.idFromName('ishare-v1'));
+    const store=rpcStore(env);
     const items=await store.cleanup(Math.floor(Date.now()/1000)),upstream=provider(env);
     for(const item of items){try{await upstream.remove(item);await store.deleted(item.id);}catch{/* Retain the quota reservation and retry next hour. */}}
   },

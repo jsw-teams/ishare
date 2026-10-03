@@ -4,9 +4,9 @@ import { provider, resourceConfiguration } from './provider.js';
 import { publicRecord, oembed, shareId, renderPage } from './views.js';
 import { deliver } from './delivery.js';
 import { defaults, changes, accountId, exceeds } from './quotas.js';
+import { rpcStore } from './rpc.js';
 const imageTypes=['image/jpeg','image/png','image/gif','image/webp','image/avif'];
 const videoTypes=['video/mp4','video/webm','video/quicktime','video/x-matroska'];
-const alive=item=>item?.state==='published'?item:fail('not_found',404);
 const methodFor={session:'GET',list:'GET','get-upload':'GET',get:'GET',oembed:'GET','create-upload':'POST',publish:'POST',delete:'POST',logout:'POST','admin-users':'GET','admin-user':'GET','admin-set-user':'POST','admin-list':'GET','admin-audit':'GET','admin-reconcile':'POST','admin-rights':'GET','admin-resolve-right':'POST',export:'GET',rights:'GET','request-right':'POST','erase-account':'POST'};
 const privateActions=new Set(Object.keys(methodFor).filter(key=>!['get','oembed'].includes(key)));
 const ready=(env,kind)=>{try{resourceConfiguration(env,kind);return true;}catch{return false;}};
@@ -18,7 +18,7 @@ const height=value=>value===null?480:number(value,480,1440);
 
 export async function handle(request,env,context,{requestProvider=fetch,requestGithub=fetch,requestUpstream=fetch}={}) {
   const url=new URL(request.url),site=origin(env.SITE_ORIGIN),now=Math.floor(Date.now()/1000);
-  const store=env.SHARE_STORE.get(env.SHARE_STORE.idFromName('ishare-v1'));
+  const store=rpcStore(env);
   const incoming=request.headers.get('Origin');
   const publicOrigins=new Set([site,...(env.WEBSITE_ORIGINS||'').split(',').filter(Boolean).map(origin)]);
   const cors=incoming&&publicOrigins.has(incoming)?{'Access-Control-Allow-Origin':incoming,Vary:'Origin'}:{};
@@ -39,7 +39,7 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     const match=url.pathname.match(/^\/(s|embed|i|v)\/([a-f0-9]{32})(?:\/([^/]+))?$/);
     if(match){
       if(!['GET','HEAD'].includes(request.method))fail('method_not_allowed',405);if(url.search)fail('invalid_query');
-      const item=alive(await store.get(match[2]));
+      const item=await store.publicGet(match[2],env.OWNER_GITHUB_ID,now);
       if(match[1]==='s'||match[1]==='embed'){if(match[3])fail('not_found',404);return await renderPage(item,env,match[1]==='embed');}
       if((match[1]==='i')!==(item.kind==='image')||!match[3])fail('not_found',404);
       return await deliver(request,env,item,match[3],store,context,{requestUpstream,requestProvider});
@@ -48,7 +48,7 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
       if(request.method!=='GET')fail('method_not_allowed',405);
       for(const name of url.searchParams.keys())if(!['url','format','maxwidth','maxheight'].includes(name))fail('invalid_query');
       if(url.searchParams.has('format')&&url.searchParams.get('format')!=='json')fail('unsupported_format',501);
-      const item=alive(await store.get(shareId(url.searchParams.get('url'),env)));
+      const item=await store.publicGet(shareId(url.searchParams.get('url'),env),env.OWNER_GITHUB_ID,now);
       return json(oembed(item,env,width(url.searchParams.get('maxwidth')),height(url.searchParams.get('maxheight'))),200,{'Cache-Control':'public, max-age=30',...cors});
     }
     if(url.pathname!=='/api')fail('not_found',404);
@@ -59,10 +59,10 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     if(privateActions.has(action))requireSite(request,env);
     const session=privateActions.has(action)?await readSession(request,store,now):null;
     const base=defaults(env),account=session?await store.account(session.user.id,base,env.OWNER_GITHUB_ID,now):null;
-    if(action==='session')return json({user:session?.user||null,csrf:session?.csrf||null,loginAvailable:authReady(env),canPublish:!!session&&allowedPublisher(env,session.user)&&!account.blocked,isAdmin:admin(env,session?.user),account,imagesAvailable:ready(env,'image'),videosAvailable:ready(env,'video'),maxVideoDuration:account?.limits.videoDuration??36000,maxVideoBytes:account?.limits.videoBytes??29_999_999_999});
+    if(action==='session')return json({user:session?.user||null,csrf:session?.csrf||null,loginAvailable:authReady(env),canPublish:!!session&&allowedPublisher(env,session.user)&&!account.blocked&&!account.sharingBlocked,isAdmin:admin(env,session?.user),account,imagesAvailable:ready(env,'image'),videosAvailable:ready(env,'video'),maxVideoDuration:account?.limits.videoDuration??36000,maxVideoBytes:account?.limits.videoBytes??29_999_999_999});
     if(action==='get'||action==='oembed'){
       const key=action==='oembed'?shareId(resource(request),env):id(resource(request));
-      const item=alive(await store.get(key));return json(action==='get'?publicRecord(item,env):oembed(item,env),200,cors);
+      const item=await store.publicGet(key,env.OWNER_GITHUB_ID,now);return json(action==='get'?publicRecord(item,env):oembed(item,env),200,cors);
     }
     if(!session)fail('login_required',401);
     if(action.startsWith('admin-')){
@@ -80,14 +80,14 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     if(action==='rights')return json({items:await store.rights(session.user.id)});
     if(action==='export'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.list(session.user.id,cursor);return json({identity:session.user,account,requests:await store.rights(session.user.id),...data,items:data.items.map(item=>publicRecord(item,env))});}
     if(action==='list'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.list(session.user.id,cursor);return json({...data,items:data.items.map(item=>publicRecord(item,env))});}
-    if(action==='get-upload'){if(account.blocked)fail('publishing_suspended',403);const item=await store.get(id(resource(request)));if(!item||item.owner!==session.user.id||item.state!=='uploading')fail('not_found',404);return json({id:item.id,bytes:item.bytes,mime:item.mime,uploadUrl:item.upload_url,protocol:item.kind==='video'?'tus':'post'});}
+    if(action==='get-upload'){if(account.blocked||account.sharingBlocked)fail('publishing_suspended',403);const item=await store.get(id(resource(request)));if(!item||item.owner!==session.user.id||item.state!=='uploading')fail('not_found',404);return json({id:item.id,bytes:item.bytes,mime:item.mime,uploadUrl:item.upload_url,protocol:item.kind==='video'?'tus':'post'});}
     requireCsrf(request,env,session);
     if(action==='logout')return await logout(request,store);
     if(action==='erase-account')return json(await store.erase(session.user.id,now),202);
     const body=await jsonBody(request),upstream=provider(env,requestProvider);
     if(action==='request-right'){if(!['appeal','rectify','restrict','delete','other'].includes(body.kind))fail('invalid_request');return json(await store.requestRight(session.user.id,body.kind,text(body.message,2000),now),201);}
     if(action==='create-upload'){
-      if(!allowedPublisher(env,session.user)||account.blocked)fail('publishing_suspended',403);
+      if(!allowedPublisher(env,session.user)||account.blocked||account.sharingBlocked)fail('publishing_suspended',403);
       for(const key of Object.keys(body))if(!['kind','title','caption','sourceUrl','sourceName','bytes','mime','duration'].includes(key))fail('invalid_field');
       if(!['image','video'].includes(body.kind))fail('invalid_kind');resourceConfiguration(env,body.kind);
       if(!(body.kind==='image'?imageTypes:videoTypes).includes(body.mime))fail('unsupported_media_type',415);
@@ -103,7 +103,7 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     const mediaId=id(resource(request)),item=await store.get(mediaId);
     if(!item||(item.owner!==session.user.id&&!(action==='delete'&&admin(env,session.user))))fail('not_found',404);
     if(action==='publish'){
-      if(!allowedPublisher(env,session.user)||account.blocked)fail('publishing_suspended',403);
+      if(!allowedPublisher(env,session.user)||account.blocked||account.sharingBlocked)fail('publishing_suspended',403);
       if(item.state==='published')return json(publicRecord(item,env));if(item.state!=='uploading')fail('invalid_state',409);
       const duration=await upstream.ready(item);return json(publicRecord(await store.publish(mediaId,session.user.id,duration,now,env.OWNER_GITHUB_ID),env));
     }
