@@ -8,7 +8,7 @@ import {repository,environment,login,request} from './helpers.mjs';
 
 for(const scenario of [{name:'image then video',order:['image','video']},{name:'video then image',order:['video','image']},{name:'browser cannot decode metadata',order:['image','video'],preview:'metadata'},{name:'video upload rejected',order:['image','video'],rejected:'video'},{name:'image rejected after video completes',order:['image','video'],rejected:'image'}])test('mixed post: '+scenario.name,async()=>{
  const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})}),{store,database}=repository(),env={...environment(store),OWNER_GITHUB_ID:'99',GITHUB_CLIENT_ID:'fixture',GITHUB_CLIENT_SECRET:'fixture'},owner=await login(store),context=await browser.newContext({locale:'zh-CN',viewport:{width:390,height:844}}),resources=new Map(),errors=[],logs=[],actions=[],methods=[];
- const image=await readFile('content/assets/brand/bear-icon.3754101e8d6380da.png'),video=await readFile('tests/fixtures/preview.webm'),ctx={waitUntil(){}};
+ const image=await readFile('content/assets/brand/bear-icon.3754101e8d6380da.png'),video=await readFile('tests/fixtures/preview.webm'),jobs=[],ctx={waitUntil(job){jobs.push(job);}};
  const provider=async(address,options={})=>{
   const url=new URL(address),method=options.method||'GET';assert.equal(url.hostname,'api.cloudflare.com');assert.equal(options.headers.Authorization,'Bearer '+env.MEDIA_API_TOKEN);
   if(method==='DELETE'){resources.delete(url.pathname.split('/').at(-1));return Response.json({success:true,result:null});}
@@ -58,7 +58,7 @@ for(const scenario of [{name:'image then video',order:['image','video']},{name:'
    assert.equal(await page.locator('#upload-status').getAttribute('data-state'),'success',await page.locator('#upload-result').textContent());assert.equal(actions.filter(action=>action==='create-post').length,1);assert.equal(await page.locator('#library article').count(),1);
    const history=store.history('42');assert.equal(history.items.length,1);const post=history.items[0];assert.equal(post.kind,'post');assert.equal(post.caption,'一条帖子里的图片和视频');assert.deepEqual(post.media.map(item=>item.kind),['video','image']);assert.equal(store.usage('42',Math.floor(Date.now()/1000)).videoSeconds,1);assert.equal(store.usage('42',Math.floor(Date.now()/1000)).images,1);assert.match(await page.getByLabel('Markdown 媒体链接').inputValue(),/\/i\//);assert.match(await page.getByLabel('Markdown 媒体链接').inputValue(),/\/s\//);
    const deleted=await handle(request('delete-post',{...owner,resource:post.id,body:{}}),env,ctx,{requestProvider:provider});assert.equal(deleted.status,202);
-   for(const item of post.media){const removed=await handle(request('delete',{...owner,resource:item.id,body:{}}),env,ctx,{requestProvider:provider});assert.equal(removed.status,200);}assert.equal(resources.size,0);assert.equal(store.history('42').items.every(item=>item.state!=='published'),true);
+   await Promise.all(jobs);assert.equal(resources.size,0);assert.equal(store.history('42').items.every(item=>item.state!=='published'),true);
   }
- }finally{await context.close();await browser.close();resources.clear();database.close();}
+ }finally{await Promise.all(jobs);await context.close();await browser.close();resources.clear();database.close();}
 });

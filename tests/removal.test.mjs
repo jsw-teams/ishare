@@ -37,3 +37,21 @@ test('configuration diagnostics require the operator and never reveal resource c
  try{const user=await login(store),owner=await login(store,{id:'99',login:'owner'});assert.equal((await handle(request('admin-diagnostics',user),env,{})).status,403);const response=await handle(request('admin-diagnostics',owner),env,{}, {requestProvider:async()=>Response.json({success:true,result:[]})});assert.equal(response.status,200);const value=await response.text();assert.match(value,/"readable":true/);assert.doesNotMatch(value,/image-secret-token|bbbbbbbbbbbbbbbb|provider_id/);
  }finally{database.close();}
 });
+
+
+test('Stream deletion accepts the documented empty response without false upstream failures',async()=>{
+ const {store,database}=repository(),env=environment(store);
+ try{for(const status of [200,204,404,410]){let calls=0;await provider(env,async(_url,options)=>{calls++;assert.equal(options.method,'DELETE');return new Response(null,{status});}).remove({kind:'video',provider_id:'fixture-video'});assert.equal(calls,1);}await assert.rejects(provider(env,async()=>new Response(null,{status:503})).remove({kind:'video',provider_id:'fixture-video'}),/upstream_unavailable/);
+ }finally{database.close();}
+});
+
+test('deleting a long post returns before provider cleanup, hides it immediately and retains accounting until cleanup succeeds',async()=>{
+ const {store,database}=repository(),env=environment(store),clock=now(),jobs=[];let release;const gate=new Promise(resolve=>{release=resolve;});let active=0,peak=0,removed=0;
+ try{const owner=await login(store),ids=Array.from({length:50},(_,n)=>n.toString(16).padStart(32,'0'));
+ for(const id of ids){store.reserve(media({id}),{...limits,ownerId:'42'},clock);store.attach(id,'fixture-'+id,'',clock);store.publish(id,'42',0,clock,'42');}
+ const post=store.createPost({id:'f'.repeat(32),owner:'42',author:media().author,caption:'Long story',sourceUrl:'',sourceName:'',listed:true,mediaIds:ids},'42',clock);
+ const response=await handle(request('delete-post',{...owner,resource:post.id,body:{}}),env,{waitUntil(job){jobs.push(job);}},{requestProvider:async()=>{active++;peak=Math.max(peak,active);await gate;active--;removed++;return Response.json({success:true,result:{}});}});
+ assert.equal(response.status,202);assert.deepEqual(await response.json(),{ok:true,pending:true});assert.equal(removed,0);assert.equal(store.history('42').items.length,0);assert.throws(()=>store.publicShare(post.id,'42',clock),/not_found/);assert.equal(store.usage('42',clock).images,50);
+ release();await Promise.all(jobs);assert.equal(removed,50);assert.ok(peak<=4);assert.equal(store.usage('42',clock).images,0);assert.equal(store.post(post.id),null);
+ }finally{release();await Promise.all(jobs);database.close();}
+});

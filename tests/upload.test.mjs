@@ -28,13 +28,13 @@ test('Cloudflare Images meta confirms publication while drafts, foreign metadata
   await assert.rejects(provider(env,answer({...detail,meta:undefined,metadata:detail.meta})).ready(store.get(item.id)),/invalid_upstream/);
   await assert.rejects(provider(env,answer({...detail,requireSignedURLs:false})).ready(store.get(item.id)),/unsafe_upstream/);
   const published=await handle(request('publish',{...owner,resource:item.id,body:{}}),env,ctx,{requestProvider:answer(detail)});assert.equal(published.status,200);assert.equal((await published.json()).state,'published');assert.equal(store.get(item.id).state,'published');
-  const post=await handle(request('create-post',{...owner,body:{title:'My photo',caption:'Story',mediaIds:[item.id],listed:false}}),env,ctx);assert.equal(post.status,201);assert.equal((await post.json()).media[0].id,item.id);
+  const post=await handle(request('create-post',{...owner,body:{caption:'Story',mediaIds:[item.id],listed:false}}),env,ctx);assert.equal(post.status,201);assert.equal((await post.json()).media[0].id,item.id);
  }finally{database.close();}
 });
 
 test('private allocation errors retain sanitized provider status and release rejected reservations',async()=>{
  const {store,database}=repository(),env=environment(store);
- try{const owner=await login(store),response=await handle(request('create-upload',{...owner,resource:'d'.repeat(32),body:{kind:'video',title:'clip.mp4',caption:'',bytes:100,mime:'video/mp4',duration:10}}),env,{waitUntil(){}},{requestProvider:async()=>new Response('secret upstream details',{status:403})});assert.equal(response.status,503);assert.deepEqual(await response.json(),{error:'upstream_unavailable',stage:'upload_allocation',upstreamStatus:403});assert.equal(store.get('d'.repeat(32)).state,'failed');assert.equal(store.usage('42',now()).videoSeconds,0);
+ try{const owner=await login(store),response=await handle(request('create-upload',{...owner,resource:'d'.repeat(32),body:{kind:'video',title:'clip.mp4',caption:'',bytes:100,mime:'video/mp4',duration:10}}),env,{waitUntil(){}},{requestProvider:async()=>new Response('secret upstream details',{status:403})});assert.equal(response.status,503);assert.deepEqual(await response.json(),{error:'upstream_unavailable',stage:'upload_allocation',reason:'http_status',upstreamStatus:403});assert.equal(store.get('d'.repeat(32)).state,'failed');assert.equal(store.usage('42',now()).videoSeconds,0);
  }finally{database.close();}
 });
 
@@ -70,4 +70,11 @@ test('image transport reports real byte progress, verifies provider success and 
  const pending=transport(),signal=new AbortController(),cancelled=uploadFile(image,grant,()=>{},{createRequest:()=>pending,signal:signal.signal});signal.abort();await assert.rejects(cancelled,{name:'AbortError'});
  const stopped=new AbortController();stopped.abort();await assert.rejects(uploadFile(image,grant,()=>{},{signal:stopped.signal,createRequest:()=>{throw Error('must not start');}}),{name:'AbortError'});
  await assert.rejects(uploadFile(image,{...grant,uploadUrl:'https://evil.example/upload'}),/invalid_upload_url/);
+});
+
+
+test('expected Stream processing is accepted and keeps the reservation until publication',async()=>{
+ const {store,database}=repository(),env=environment(store);try{const owner=await login(store),item=media({kind:'video',duration:30,mime:'video/mp4'});store.reserve(item,limits,now());store.attach(item.id,'fixture-video','',now());
+ const response=await handle(request('publish',{...owner,resource:item.id,body:{}}),env,{}, {requestProvider:async()=>Response.json({success:true,result:{requireSignedURLs:true,readyToStream:false,status:{state:'inprogress'}}})});assert.equal(response.status,202);assert.deepEqual(await response.json(),{state:'processing',retryAfter:3});assert.equal(store.get(item.id).state,'uploading');assert.equal(store.usage('42',now()).videoSeconds,30);
+ }finally{database.close();}
 });

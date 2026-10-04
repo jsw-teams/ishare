@@ -1,6 +1,7 @@
 import { fail, ServiceError } from './security.js';
 import {uploadAddress} from '../../static/ishare/upload-address.js';
 const providerId = value => typeof value==='string' && /^[a-zA-Z0-9_-]{1,128}$/.test(value) ? value : fail('invalid_upstream',502);
+function upstreamFailure(stage,reason,status,data){const error=new ServiceError('upstream_unavailable',503);error.stage=stage;error.reason=reason;if(status)error.upstreamStatus=status;const codes=(Array.isArray(data?.errors)?data.errors:[]).map(item=>item?.code).filter(Number.isSafeInteger).slice(0,5);if(codes?.length)error.providerCodes=codes;console.warn('ishare_upstream_failure',{stage,reason,upstreamStatus:status||0,...(error.providerCodes?{providerCodes:error.providerCodes}:{})});return error;}
 function grant(kind,identifier,destination){
  let uid,url;try{uid=providerId(identifier);}catch(error){error.stage='upload_identifier';error.reason=identifier?'invalid_id':'missing_id';console.warn('ishare_upload_rejected',{kind,stage:error.stage,reason:error.reason});throw error;}
  try{url=uploadAddress(destination,kind);}catch(cause){const error=new ServiceError('invalid_upstream',502);error.providerId=uid;error.stage='upload_destination';error.reason=cause.reason;console.warn('ishare_upload_rejected',{kind,stage:error.stage,reason:error.reason});throw error;}
@@ -15,13 +16,15 @@ export function resourceConfiguration(env,kind) {
 export function provider(env,request=fetch) {
   async function call(kind,path,options={}) {
     const {account,token}=resourceConfiguration(env,kind);
+    const stage=options.method==='POST'?'upload_allocation':'provider_api';
     let response;
-    try{response=await request(`https://api.cloudflare.com/client/v4/accounts/${account}/${path}`,{...options,headers:{Authorization:'Bearer '+token,...options.headers},redirect:'manual',signal:AbortSignal.timeout(20000)});}catch{fail('upstream_unavailable',503);}
+    try{response=await request(`https://api.cloudflare.com/client/v4/accounts/${account}/${path}`,{...options,headers:{Authorization:'Bearer '+token,...options.headers},redirect:'manual',signal:AbortSignal.timeout(20000)});}catch(cause){throw upstreamFailure(stage,['TimeoutError','AbortError'].includes(cause.name)?'timeout':'network');}
     if(options.method==='DELETE'&&[404,410].includes(response.status)){await response.body?.cancel();return {};}
     if([404,410].includes(response.status)&&/^((images\/v1|stream)\/[^/]+)(\/token)?$/.test(path)){await response.body?.cancel();fail('media_missing',404);}
-    if(!response.ok){const error=new ServiceError('upstream_unavailable',503);error.safeToRelease=[400,401,403,422].includes(response.status);error.upstreamStatus=response.status;error.stage=options.method==='POST'?'upload_allocation':'provider_api';throw error;}
+    if(options.method==='DELETE'&&kind==='video'&&response.ok){await response.body?.cancel();return {};}
     const result=await response.json().catch(()=>null);
-    if(!result?.success||options.method!=='DELETE'&&!result.result)fail('upstream_unavailable',503);
+    if(!response.ok){const error=upstreamFailure(stage,'http_status',response.status,result);error.safeToRelease=[400,401,403,422].includes(response.status);throw error;}
+    if(!result?.success||options.method!=='DELETE'&&!result.result)throw upstreamFailure(stage,!result?'invalid_json':!result.success?'api_rejected':'missing_result',response.status,result);
     return result.result;
   }
   return {
@@ -51,8 +54,9 @@ export function provider(env,request=fetch) {
       const meta={maxDurationSeconds:String(item.duration),requiresignedurls:'',expiry:new Date((now+3600)*1000).toISOString(),name:item.id};
       const metadata=Object.entries(meta).map(([key,value])=>value?key+' '+btoa(value):key).join(',');
       const {account,token}=resourceConfiguration(env,'video');
-      let response;try{response=await request(`https://api.cloudflare.com/client/v4/accounts/${account}/stream?direct_user=true`,{method:'POST',headers:{Authorization:'Bearer '+token,'Tus-Resumable':'1.0.0','Upload-Length':String(item.bytes),'Upload-Metadata':metadata,'Upload-Creator':'ishare:'+item.owner},redirect:'manual',signal:AbortSignal.timeout(20000)});}catch{fail('upstream_unavailable',503);}
-      if(response.status!==201){const error=new ServiceError('upstream_unavailable',503);error.safeToRelease=[400,401,403,422].includes(response.status);error.upstreamStatus=response.status;error.stage='upload_allocation';throw error;}
+      let response;try{response=await request(`https://api.cloudflare.com/client/v4/accounts/${account}/stream?direct_user=true`,{method:'POST',headers:{Authorization:'Bearer '+token,'Tus-Resumable':'1.0.0','Upload-Length':String(item.bytes),'Upload-Metadata':metadata,'Upload-Creator':'ishare:'+item.owner},redirect:'manual',signal:AbortSignal.timeout(20000)});}catch(cause){throw upstreamFailure('upload_allocation',['TimeoutError','AbortError'].includes(cause.name)?'timeout':'network');}
+      if(response.status!==201){const error=upstreamFailure('upload_allocation','http_status',response.status,await response.json().catch(()=>null));error.safeToRelease=[400,401,403,422].includes(response.status);throw error;}
+      await response.body?.cancel();
       return grant('video',response.headers.get('stream-media-id'),response.headers.get('Location'));
     },
     async ready(item) {

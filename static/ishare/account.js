@@ -20,8 +20,8 @@ export function avatarFor(id,image){
 export function showAccount(session){
  const menu=document.querySelector('#account-menu');if(!menu)return;
  const identity=document.querySelector('#identity'),admin=document.querySelector('#admin-link');menu.hidden=!session.user;admin.hidden=!session.isAdmin;identity.setAttribute('aria-label',messages(document.documentElement.lang).accountMenu);
- if(!session.user){menu.open=false;document.querySelector('#menu-name').textContent='';document.querySelector('#menu-login').textContent='';}
- else{const name=session.profile?.displayName||session.user.name||session.user.login;document.querySelector('#menu-name').textContent=name;document.querySelector('#menu-login').textContent='@'+session.user.login;identity.querySelector('.account-label').textContent=name;}
+ if(!session.user){menu.open=false;document.querySelector('#menu-name').textContent='';}
+ else{const name=session.profile?.displayName||session.user.name||session.user.login;document.querySelector('#menu-name').textContent=name;identity.querySelector('.account-label').textContent=name;}
  if(avatarUser===session.user?.id)return;
  avatarUser=session.user?.id;const current=++generation;if(avatarUrl)URL.revokeObjectURL(avatarUrl);avatarUrl=null;const slot=identity.querySelector('.account-avatar-slot');slot.replaceChildren();if(!session.user)return;
  const image=document.createElement('img');image.className='user-avatar';image.width=36;image.height=36;image.alt='';image.src='/brand/bear-favicon.52039e84b2f38015.png';slot.append(image);

@@ -3,13 +3,13 @@ import { Repository } from './store.js';
 import { handle } from './service.js';
 import { provider } from './provider.js';
 import { ServiceError } from './security.js';
-import {finishRemoval,removeMedia} from './removal.js';
+import {parallelRemoval,removeMedia} from './removal.js';
 
 export class ShareStore extends DurableObject {
   constructor(ctx,env){super(ctx,env);this.repository=new Repository(ctx.storage.sql,fn=>ctx.storage.transactionSync(fn));ctx.blockConcurrencyWhile(()=>this.scheduleCleanup());}
   async scheduleCleanup(){const due=this.repository.nextCleanup(Math.floor(Date.now()/1000)),current=await this.ctx.storage.getAlarm();if(due===null){if(current!==null)await this.ctx.storage.deleteAlarm();}else if(current===null||due*1000<current)await this.ctx.storage.setAlarm(Math.max(Date.now()+1000,due*1000));}
   async invoke(method,args){try{const result=this.repository[method](...args);if(['reserve','attach','uncertain','prepareRemoval','deleted','failed','publish','deletePost','erase','cleanup','makeSession','beginAuth','consumeAuth','logout','rate','delivery','setAccount','setQuotaSettings','resolveRight','discardPost'].includes(method))await this.scheduleCleanup();return result;}catch(error){if(error instanceof ServiceError)return {__ishareError:error.message,status:error.status};throw error;}}
-  async alarm(){const store=this.repository,upstream=provider(this.env),now=Math.floor(Date.now()/1000);for(const item of store.cleanup(now)){try{await finishRemoval(item,store,upstream);}catch{/* The next alarm retries only remaining work. */}}for(const item of store.pendingCleanup(now)){try{await removeMedia(item,store,upstream,item.owner,true,now,true);}catch{/* Unknown allocation is discovered by its exact application metadata. */}}store.cleanup(Math.floor(Date.now()/1000));await this.scheduleCleanup();}
+  async alarm(){const store=this.repository,upstream=provider(this.env),now=Math.floor(Date.now()/1000);await parallelRemoval(store.cleanup(now),store,upstream);for(const item of store.pendingCleanup(now)){try{await removeMedia(item,store,upstream,item.owner,true,now,true);}catch{/* Unknown allocation is discovered by its exact application metadata. */}}store.cleanup(Math.floor(Date.now()/1000));await this.scheduleCleanup();}
   profile(...args){return this.invoke('profile',args);}
   setProfile(...args){return this.invoke('setProfile',args);}
   get(id){return this.invoke('get',[id]);}

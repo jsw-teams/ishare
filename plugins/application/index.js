@@ -29,7 +29,7 @@ export default function application(api){
   });
   api.registerGenerator('ishare-assets',async({config,renderLayout})=>[
     ...await Promise.all(['en','zh-CN','zh-TW'].map(async locale=>({path:'profile-shell-'+locale+'.html',body:await renderLayout({title:'PROFILE_NAME_TOKEN',locale,urlPath:'/profile-shell-'+locale+'.html',structuredData:false},translate(await readFile(new URL('./public-profile.html',import.meta.url),'utf8'),locale))}))),
-    {path:'assets.json',contentType:'application/json',body:JSON.stringify({app:config.assetManifest['/ishare/app.js'],player:config.assetManifest['/ishare/player.js'],media:config.assetManifest['/ishare/media-viewer.js'],avatars:config.assetManifest['/ishare/avatars.js'],style:config.assetManifest['/style.css'],shell:'/share-shell.html'})},
-    {path:'share-shell.html',body:await renderLayout({title:'ISHARE_TITLE_TOKEN',locale:'en',urlPath:'/share-shell.html',structuredData:false},'ISHARE_BODY_TOKEN')}
+    {path:'assets.json',contentType:'application/json',body:JSON.stringify({app:config.assetManifest['/ishare/app.js'],media:config.assetManifest['/ishare/media-viewer.js'],avatars:config.assetManifest['/ishare/avatars.js'],style:config.assetManifest['/style.css'],shells:Object.fromEntries(['en','zh-CN','zh-TW'].map(locale=>[locale,'/share-shell-'+locale+'.html']))})},
+    ...await Promise.all(['en','zh-CN','zh-TW'].map(async locale=>({path:'share-shell-'+locale+'.html',body:await renderLayout({title:'ISHARE_TITLE_TOKEN',locale,urlPath:'/share-shell-'+locale+'.html',structuredData:false},'ISHARE_BODY_TOKEN')})))
   ]);
 }

@@ -3,7 +3,7 @@ import { authReady, readSession, requireSite, requireCsrf, authorize, callback, 
 import { provider, resourceConfiguration } from './provider.js';
 import { publicRecord, oembed, shareId, renderPage, renderProfile } from './views.js';
 import { deliver } from './delivery.js';
-import {removeMedia} from './removal.js';
+import {removeMedia,finishRemoval,parallelRemoval} from './removal.js';
 import { changes, accountId, exceeds, settingsChange } from './quotas.js';
 import { rpcStore } from './rpc.js';
 const imageTypes=['image/jpeg','image/png','image/gif','image/webp','image/avif'];
@@ -44,7 +44,7 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     if(match){
       if(!['GET','HEAD'].includes(request.method))fail('method_not_allowed',405);if(url.search)fail('invalid_query');
       const item=await store[match[1]==='s'||match[1]==='embed'?'publicShare':'publicGet'](match[2],env.OWNER_GITHUB_ID,now);
-      if(match[1]==='s'||match[1]==='embed'){if(match[3])fail('not_found',404);return await renderPage(item,env,site,match[1]==='embed');}
+      if(match[1]==='s'||match[1]==='embed'){if(match[3])fail('not_found',404);return await renderPage(item,env,site,match[1]==='embed',request.headers.get('Accept-Language'));}
       if((match[1]==='i')!==(item.kind==='image')||!match[3])fail('not_found',404);
       return await deliver(request,env,item,match[3],store,context,{requestUpstream,requestProvider});
     }
@@ -102,7 +102,7 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     }
     if(action==='history'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.history(session.user.id,cursor);return json({...data,items:data.items.map(item=>publicRecord(item,site))});}
     if(action==='rights')return json({items:await store.rights(session.user.id)});
-    if(action==='export'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.history(session.user.id,cursor);return json({identity:session.user,profile:session.profile,account,requests:await store.rights(session.user.id),...data,items:data.items.map(item=>publicRecord(item,site))});}
+    if(action==='export'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.history(session.user.id,cursor,true);return json({identity:session.user,profile:session.profile,account,requests:await store.rights(session.user.id),...data,items:data.items.map(item=>publicRecord(item,site))});}
     requireCsrf(request,session);
     if(action==='set-profile'){const body=await jsonBody(request);if(Object.keys(body).some(key=>!['displayName','bio'].includes(key)))fail('invalid_field');await store.rate('profile:'+session.user.id,30,now,3600);return json(await store.setProfile(session.user.id,text(body.displayName,60),text(body.bio,500,true),now));}
     if(action==='logout')return await logout(request,store);
@@ -110,12 +110,12 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     const body=await jsonBody(request),upstream=provider(env,requestProvider);
     if(action==='request-right'){if(body.kind==='appeal'&&(account.erasing||allowedPublisher(env,session.user)&&!account.blocked&&!account.sharingBlocked))fail('appeal_not_available',403);if(!['appeal','rectify','restrict','delete','other'].includes(body.kind))fail('invalid_request');return json(await store.requestRight(session.user.id,body.kind,text(body.message,2000),now),201);}
     if(action==='discard-post')return json(await store.discardPost(id(resource(request)),session.user.id));
-    if(action==='delete-post')return json(await store.deletePost(id(resource(request)),session.user.id,admin(env,session.user)),202);
+    if(action==='delete-post'){const result=await store.deletePost(id(resource(request)),session.user.id,admin(env,session.user));context.waitUntil?.((async()=>{const items=await Promise.all(result.mediaIds.map(key=>store.get(key)));await parallelRemoval(items,store,upstream);await store.cleanup(Math.floor(Date.now()/1000));})().catch(()=>{}));return json({ok:true,pending:true},202);}
     if(action==='set-visibility'){if(typeof body.listed!=='boolean')fail('invalid_field');return json(publicRecord(await store.visibility(id(resource(request)),session.user.id,body.listed,env.OWNER_GITHUB_ID),site));}
     if(action==='create-post'){
       if(!allowedPublisher(env,session.user)||account.blocked||account.sharingBlocked)fail('publishing_suspended',403);
-      if(Object.keys(body).some(key=>!['title','caption','mediaIds','listed'].includes(key))||!Array.isArray(body.mediaIds)||body.mediaIds.length>50||typeof body.listed!=='boolean')fail('invalid_post');
-      const data={id:resource(request)?id(resource(request)):crypto.randomUUID().replaceAll('-',''),owner:session.user.id,author:session.user,title:text(body.title,200),caption:text(body.caption,5000,true),sourceUrl:'',sourceName:'',mediaIds:body.mediaIds.map(id),listed:body.listed};
+      if(Object.keys(body).some(key=>!['caption','mediaIds','listed'].includes(key))||!Array.isArray(body.mediaIds)||body.mediaIds.length>50||typeof body.listed!=='boolean')fail('invalid_post');
+      const data={id:resource(request)?id(resource(request)):crypto.randomUUID().replaceAll('-',''),owner:session.user.id,author:session.user,caption:text(body.caption,5000,true),sourceUrl:'',sourceName:'',mediaIds:body.mediaIds.map(id),listed:body.listed};
       if(session.user.id!==env.OWNER_GITHUB_ID)await store.rate('posts:'+session.user.id,100,now,86400);return json(publicRecord(await store.createPost(data,env.OWNER_GITHUB_ID,now),site),201);
     }
     if(action==='create-upload'){
@@ -139,6 +139,7 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
       if(item.state==='published')return json(publicRecord(item,site));if(item.state!=='uploading')fail('invalid_state',409);
       const duration=await upstream.ready(item);return json(publicRecord(await store.publish(mediaId,session.user.id,duration,now,env.OWNER_GITHUB_ID),site));
     }
+    if(action==='delete'&&item.state!=='uncertain'&&item.state!=='preparing'){const marked=await store.prepareRemoval(item.id,session.user.id,admin(env,session.user),item.provider_id?[item.provider_id]:[],false);context.waitUntil?.(finishRemoval(marked,store,upstream).then(()=>store.cleanup(Math.floor(Date.now()/1000))).catch(()=>{}));return json({ok:true,pending:true},202);}
     if(action==='delete'||action==='discard-upload'){
       await removeMedia(item,store,upstream,session.user.id,action==='delete'&&admin(env,session.user),now,action==='discard-upload');
       return json({ok:true});
@@ -146,8 +147,9 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     fail('unknown_action',404);
   } catch(error) {
     const code=error instanceof ServiceError?error.message:'service_unavailable';
+    if(code==='processing'&&url.pathname==='/api'&&request.headers.get('X-Service-Action')==='publish')return json({state:'processing',retryAfter:3},202);
     if(url.pathname==='/auth/callback'&&!request.headers.get('Accept')?.includes('application/json'))return new Response(null,{status:303,headers:{Location:site+'/mine/#login-error='+encodeURIComponent(code),'Cache-Control':'no-store','Referrer-Policy':'no-referrer','Set-Cookie':'__Host-ishare-oauth=; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=0'}});
     const diagnostics=url.pathname==='/api'&&privateActions.has(request.headers.get('X-Service-Action'));
-    return json({error:code,...(diagnostics&&error.stage?{stage:error.stage}:{}),...(diagnostics&&error.reason?{reason:error.reason}:{}),...(diagnostics&&Number.isInteger(error.upstreamStatus)?{upstreamStatus:error.upstreamStatus}:{})},error instanceof ServiceError?error.status:503);
+    return json({error:code,...(diagnostics&&error.stage?{stage:error.stage}:{}),...(diagnostics&&error.reason?{reason:error.reason}:{}),...(diagnostics&&error.providerCodes?{providerCodes:error.providerCodes}:{}),...(diagnostics&&Number.isInteger(error.upstreamStatus)?{upstreamStatus:error.upstreamStatus}:{})},error instanceof ServiceError?error.status:503);
   }
 }

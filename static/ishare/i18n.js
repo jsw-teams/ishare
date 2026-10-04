@@ -1,6 +1,7 @@
 const dictionaries={
   "en": {
     "title": "Share what you see.",
+    "openPost": "Open post", "previousAttachment": "Previous attachment", "nextAttachment": "Next attachment", "removed": "Deleted.",
     "intro": "A photo, a video, a few words. Make a little room for your stories.",
     "login": "Sign in with GitHub",
     "logout": "Sign out",
@@ -125,7 +126,6 @@ const dictionaries={
     "adminPage": "Administration",
     "adminDenied": "This account cannot access administration.",
     "adminLogin": "Sign in from My shares to access administration.",
-    "newPostTitle": "Shared moment",
     "myQuota": "Your usage",
     "quotaImages": "Images stored",
     "quotaVideos": "Video stored (minutes)",
@@ -201,6 +201,7 @@ const dictionaries={
   },
   "zh-CN": {
     "title": "把你的所见，分享给世界。",
+    "openPost": "查看帖子", "previousAttachment": "上一个附件", "nextAttachment": "下一个附件", "removed": "已删除。",
     "intro": "一张照片，一段视频，再添几句配文。让值得记录的瞬间，有一个可以分享的地方。",
     "login": "使用 GitHub 登录",
     "logout": "退出登录",
@@ -325,7 +326,6 @@ const dictionaries={
     "adminPage": "管理后台",
     "adminDenied": "当前账户没有后台管理权限。",
     "adminLogin": "请先在“我的分享”登录。",
-    "newPostTitle": "分享",
     "myQuota": "我的配额",
     "quotaImages": "图片存储（张）",
     "quotaVideos": "视频存储（分钟）",
@@ -401,6 +401,7 @@ const dictionaries={
   },
   "zh-TW": {
     "title": "把你的所見，分享給世界。",
+    "openPost": "查看貼文", "previousAttachment": "上一個附件", "nextAttachment": "下一個附件", "removed": "已刪除。",
     "intro": "一張照片，一段影片，再添幾句配文。讓值得記錄的瞬間，有一個可以分享的地方。",
     "login": "使用 GitHub 登入",
     "logout": "登出",
@@ -525,7 +526,6 @@ const dictionaries={
     "adminPage": "管理後台",
     "adminDenied": "目前帳戶沒有後台管理權限。",
     "adminLogin": "請先在「我的分享」登入。",
-    "newPostTitle": "分享",
     "myQuota": "我的配額",
     "quotaImages": "圖片儲存（張）",
     "quotaVideos": "影片儲存（分鐘）",

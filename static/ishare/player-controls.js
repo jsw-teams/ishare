@@ -1,8 +1,8 @@
 import {messages} from './i18n.js';
-export function playerControls(video){
+export function playerControls(video,start){
  const t=messages(document.documentElement.lang),root=document.createElement('div');root.className='player-controls';
  const button=(key,action)=>{const node=document.createElement('button');node.type='button';node.textContent=t[key];node.addEventListener('click',action);root.append(node);return node;};
- const play=button('play',()=>{if(video.paused)void video.play().catch(()=>{});else video.pause();});
+ const play=button('play',()=>{if(video.paused)start();else video.pause();});
  const seek=document.createElement('input');seek.type='range';seek.min='0';seek.max='1000';seek.value='0';seek.setAttribute('aria-label',t.seek);root.append(seek);
  const time=document.createElement('span');time.className='player-time';root.append(time);
  const mute=button('mute',()=>{video.muted=!video.muted;});button('fullscreen',()=>{const container=video.parentElement;if(document.fullscreenElement)void document.exitFullscreen().catch(()=>{});else void container.requestFullscreen?.().catch(()=>{});});

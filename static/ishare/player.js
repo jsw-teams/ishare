@@ -1,9 +1,9 @@
 import Hls from 'hls.js';
 import {mediaFeedback} from './media.js';
 import {playerControls} from './player-controls.js';
-for(const video of document.querySelectorAll('video[data-source]')){
+export function mountVideo(video){
  let hls=null,failed=false;
- const controls=playerControls(video),feedback=mediaFeedback(video,()=>{start();if(!failed)void video.play().catch(()=>{});});
+ const play=()=>{if(!hls&&!video.hasAttribute('src'))start();if(!failed)void video.play().catch(()=>{});},controls=playerControls(video,play),feedback=mediaFeedback(video,()=>{failed=false;play();});
  function fail(key='videoUnavailable'){if(failed)return;failed=true;video.pause();hls?.destroy();hls=null;video.removeAttribute('src');video.load();controls.failed();feedback.failed(key);}
  function start(){
   failed=false;controls.ready();
@@ -16,6 +16,5 @@ for(const video of document.querySelectorAll('video[data-source]')){
  video.addEventListener('play',()=>hls?.startLoad());
  video.addEventListener('loadeddata',()=>{if(!failed)feedback.ready();});
  video.addEventListener('error',()=>{if(!failed)fail();});
- window.addEventListener('pagehide',()=>hls?.destroy(),{once:true});
- start();
+ return ()=>{video.pause();hls?.destroy();hls=null;video.removeAttribute('src');video.load();};
 }
