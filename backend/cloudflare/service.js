@@ -8,9 +8,9 @@ import { changes, accountId, exceeds, settingsChange } from './quotas.js';
 import { rpcStore } from './rpc.js';
 const imageTypes=['image/jpeg','image/png','image/gif','image/webp','image/avif'];
 const videoTypes=['video/mp4','video/webm','video/quicktime','video/x-matroska'];
-const methodFor={'admin-diagnostics':'GET','discard-upload':'POST','discard-post':'POST','profile-feed':'GET','profile-avatar':'GET','profile':'GET','set-profile':'POST',avatar:'GET',feed:'GET',history:'GET','create-post':'POST','delete-post':'POST','set-visibility':'POST','admin-settings':'GET','admin-set-settings':'POST',session:'GET',list:'GET','get-upload':'GET',get:'GET',oembed:'GET','create-upload':'POST',publish:'POST',delete:'POST',logout:'POST','admin-users':'GET','admin-user':'GET','admin-set-user':'POST','admin-list':'GET','admin-audit':'GET','admin-rights':'GET','admin-resolve-right':'POST',export:'GET',rights:'GET','request-right':'POST','erase-account':'POST'};
+const methodFor={'admin-diagnostics':'GET','discard-upload':'POST','discard-post':'POST','profile-feed':'GET','profile-avatar':'GET','profile':'GET','set-profile':'POST',avatar:'GET',feed:'GET',history:'GET','create-post':'POST','delete-post':'POST','set-visibility':'POST','admin-settings':'GET','admin-set-settings':'POST',session:'GET',get:'GET',oembed:'GET','create-upload':'POST',publish:'POST',delete:'POST',logout:'POST','admin-users':'GET','admin-user':'GET','admin-set-user':'POST','admin-list':'GET','admin-audit':'GET','admin-rights':'GET','admin-resolve-right':'POST',export:'GET',rights:'GET','request-right':'POST','erase-account':'POST'};
 const privateActions=new Set(Object.keys(methodFor).filter(key=>!['get','oembed','feed','profile','profile-feed','profile-avatar'].includes(key)));
-const accountActions=new Set(['request-right','export','get-upload','create-post','create-upload','publish']);
+const accountActions=new Set(['request-right','export','create-post','create-upload','publish']);
 const settingsActions=new Set([...accountActions,'admin-settings','admin-set-settings','admin-users','admin-user','admin-set-user']);
 const ready=(env,kind)=>{try{resourceConfiguration(env,kind);return true;}catch{return false;}};
 const allowedPublisher=(env,user)=>user?.id===env.OWNER_GITHUB_ID||!env.PUBLISHER_IDS||env.PUBLISHER_IDS==='*'||env.PUBLISHER_IDS.split(',').map(s=>s.trim()).includes(user?.id);
@@ -103,8 +103,6 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     if(action==='history'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.history(session.user.id,cursor);return json({...data,items:data.items.map(item=>publicRecord(item,site))});}
     if(action==='rights')return json({items:await store.rights(session.user.id)});
     if(action==='export'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.history(session.user.id,cursor);return json({identity:session.user,profile:session.profile,account,requests:await store.rights(session.user.id),...data,items:data.items.map(item=>publicRecord(item,site))});}
-    if(action==='list'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.list(session.user.id,cursor);return json({...data,items:data.items.map(item=>publicRecord(item,site))});}
-    if(action==='get-upload'){if(account.blocked||account.sharingBlocked)fail('publishing_suspended',403);const item=await store.get(id(resource(request)));if(!item||item.owner!==session.user.id||item.state!=='uploading')fail('not_found',404);return json({id:item.id,bytes:item.bytes,mime:item.mime,uploadUrl:item.upload_url,protocol:item.kind==='video'?'tus':'post'});}
     requireCsrf(request,session);
     if(action==='set-profile'){const body=await jsonBody(request);if(Object.keys(body).some(key=>!['displayName','bio'].includes(key)))fail('invalid_field');await store.rate('profile:'+session.user.id,30,now,3600);return json(await store.setProfile(session.user.id,text(body.displayName,60),text(body.bio,500,true),now));}
     if(action==='logout')return await logout(request,store);

@@ -8,7 +8,7 @@ import {removeMedia,finishRemoval} from '../backend/cloudflare/removal.js';
 test('invalid upload destinations remove known allocations immediately and scrub failed records',async()=>{
  const {store,database}=repository(),env=environment(store),session=await login(store),id='a'.repeat(32),calls=[];
  try{const response=await handle(request('create-upload',{...session,resource:id,body:{kind:'image',title:'Failed image',bytes:100,mime:'image/png'}}),env,{}, {requestProvider:async(url,options)=>{calls.push([url,options.method]);return Response.json({success:true,result:options.method==='DELETE'?{}:{id:'short-id',uploadURL:'https://evil.example/upload'}});}});
- assert.equal(response.status,502);assert.deepEqual(await response.json(),{error:'invalid_upstream',stage:'upload_destination'});assert.equal(calls.length,2);assert.match(calls[1][0],/images\/v1\/short-id$/);assert.equal(calls[1][1],'DELETE');assert.equal(store.get(id).state,'deleted');assert.equal(store.get(id).title,'');assert.equal(store.history('42').items.length,0);assert.equal(store.usage('42',now()).images,0);assert.ok(store.nextCleanup(now())>now()+86400);
+ assert.equal(response.status,502);assert.deepEqual(await response.json(),{error:'invalid_upstream',stage:'upload_destination'});assert.equal(calls.length,2);assert.match(calls[1][0],/images\/v1\/short-id$/);assert.equal(calls[1][1],'DELETE');assert.equal(store.get(id).state,'deleted');assert.equal(store.get(id).title,'');assert.equal(store.history('42').items.length,0);assert.equal(store.usage('42',now()).images,0);assert.equal(store.nextCleanup(now()),store.one('SELECT expires+1 AS deadline FROM sessions').deadline);
  }finally{database.close();}
 });
 
