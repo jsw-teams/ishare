@@ -10,7 +10,7 @@ function upload(store,key,owner='42',kind='image'){store.reserve(media({id:key,o
 test('multi-attachment posts require ownership, are idempotent and enter the feed only by opt-in',async()=>{
  const {store,database}=repository(),env=environment(store);env.OWNER_GITHUB_ID='99';
  try{const publisher=await login(store),post='d'.repeat(32),first='a'.repeat(32),second='b'.repeat(32),other='c'.repeat(32);upload(store,first);upload(store,second);upload(store,other,'43');
- const body={title:'A shared day',caption:'First the story\nThen the pictures',sourceUrl:'',sourceName:'',mediaIds:[first,second],listed:false};
+ const body={title:'A shared day',caption:'First the story\nThen the pictures',mediaIds:[first,second],listed:false};
  assert.equal((await handle(request('create-post',{...publisher,resource:post,body:{...body,mediaIds:[first,other]}}),env,ctx)).status,409);assert.equal(store.post(post),null);
  assert.equal((await handle(request('create-post',{...publisher,resource:post,csrf:'bad',body}),env,ctx)).status,403);
  for(let i=0;i<2;i++){const response=await handle(request('create-post',{...publisher,resource:post,body}),env,ctx);assert.equal(response.status,201);const record=await response.json();assert.equal(record.media.length,2);assert.match(record.markdown,new RegExp('/i/'+first+'/public'));assert.match(record.markdown,new RegExp('/i/'+second+'/public'));assert.match(record.embedCode,new RegExp('/embed/'+post));assert.doesNotMatch(JSON.stringify(record),/provider|upload\.imagedelivery/);}

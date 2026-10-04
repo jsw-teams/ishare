@@ -1,3 +1,4 @@
+import {serviceClient,showAccount} from './account.js';
 import {messages} from './i18n.js';
 import {postPreview,emptyState} from './cards.js';
 const dictionary=messages(document.documentElement.lang),t=key=>dictionary[key]||key;
@@ -8,3 +9,5 @@ async function load(append=false){
   catch{status.textContent=t('feedUnavailable');}finally{more.disabled=false;}
 }
 more.addEventListener('click',()=>void load(true));void load();
+
+const client=serviceClient();void client.read().then(session=>showAccount(session)).catch(()=>{});document.querySelector('#logout').addEventListener('click',async()=>{try{await client.request('logout',{body:{}});showAccount(await client.read());}catch{}});

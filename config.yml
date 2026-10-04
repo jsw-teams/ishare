@@ -1,6 +1,6 @@
 site:
   title: ishare
-  description: 分享图片、视频与配文，保留作者及来源。
+  description: 分享图片、视频与配文。
   url: https://ishare.js.gripe
   language: zh-CN
   head:

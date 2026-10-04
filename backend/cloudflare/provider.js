@@ -14,7 +14,7 @@ export function provider(env,request=fetch) {
   async function call(kind,path,options={}) {
     const {account,token}=resourceConfiguration(env,kind);
     let response;
-    try{response=await request(`https://api.cloudflare.com/client/v4/accounts/${account}/${path}`,{...options,headers:{Authorization:'Bearer '+token,...options.headers},redirect:'error',signal:AbortSignal.timeout(20000)});}catch{fail('upstream_unavailable',503);}
+    try{response=await request(`https://api.cloudflare.com/client/v4/accounts/${account}/${path}`,{...options,headers:{Authorization:'Bearer '+token,...options.headers},redirect:'manual',signal:AbortSignal.timeout(20000)});}catch{fail('upstream_unavailable',503);}
     if(options.method==='DELETE'&&response.status===404)return {};
     if(!response.ok){const error=new ServiceError('upstream_unavailable',503);error.safeToRelease=[400,401,403,422].includes(response.status);throw error;}
     const result=await response.json().catch(()=>null);
@@ -35,7 +35,7 @@ export function provider(env,request=fetch) {
       const meta={maxDurationSeconds:String(item.duration),requiresignedurls:'',expiry:new Date((now+3600)*1000).toISOString(),name:item.id};
       const metadata=Object.entries(meta).map(([key,value])=>key+' '+btoa(value)).join(',');
       const {account,token}=resourceConfiguration(env,'video');
-      let response;try{response=await request(`https://api.cloudflare.com/client/v4/accounts/${account}/stream`,{method:'POST',headers:{Authorization:'Bearer '+token,'Tus-Resumable':'1.0.0','Upload-Length':String(item.bytes),'Upload-Metadata':metadata,'Upload-Creator':'ishare:'+item.owner},redirect:'error',signal:AbortSignal.timeout(20000)});}catch{fail('upstream_unavailable',503);}
+      let response;try{response=await request(`https://api.cloudflare.com/client/v4/accounts/${account}/stream`,{method:'POST',headers:{Authorization:'Bearer '+token,'Tus-Resumable':'1.0.0','Upload-Length':String(item.bytes),'Upload-Metadata':metadata,'Upload-Creator':'ishare:'+item.owner},redirect:'manual',signal:AbortSignal.timeout(20000)});}catch{fail('upstream_unavailable',503);}
       if(response.status!==201){const error=new ServiceError('upstream_unavailable',503);error.safeToRelease=[400,401,403,422].includes(response.status);throw error;}
       const url=new URL(response.headers.get('Location'));if(url.protocol!=='https:'||url.hostname!=='upload.videodelivery.net'||url.username||url.password||url.hash)fail('invalid_upstream',502);
       return {providerId:providerId(response.headers.get('stream-media-id')),uploadUrl:url.href,protocol:'tus'};

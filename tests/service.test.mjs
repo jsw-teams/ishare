@@ -4,6 +4,16 @@ import {handle} from '../backend/cloudflare/service.js';
 import {authorize} from '../backend/cloudflare/auth.js';
 import {repository,environment,media,limits,login,request,now} from './helpers.mjs';
 const ctx={waitUntil:()=>{}};
+
+test('avatars use the authenticated numeric identity through a private fixed header action',async()=>{
+ const {store,database}=repository(),env=environment(store);let calls=0;
+ const upstream=async(url,options)=>{calls++;assert.equal(url,'https://avatars.githubusercontent.com/u/42?s=96');assert.equal(options.redirect,'manual');return new Response(new Uint8Array([1,2,3]),{headers:{'Content-Type':'image/png',Location:'https://private-upstream.example'}});};
+ try{
+  assert.equal((await handle(request('avatar'),env,ctx,{requestUpstream:upstream})).status,401);assert.equal(calls,0);
+  const owner=await login(store),response=await handle(request('avatar',{...owner,resource:'999'}),env,ctx,{requestUpstream:upstream});assert.equal(response.status,200);assert.deepEqual([...new Uint8Array(await response.arrayBuffer())],[1,2,3]);assert.match(response.headers.get('Cache-Control'),/^private/);assert.match(response.headers.get('Vary'),/X-Service-Action/);assert.equal(response.headers.get('Location'),null);
+  assert.equal((await handle(request('avatar',{...owner,origin:'https://evil.example'}),env,ctx,{requestUpstream:upstream})).status,403);assert.equal(calls,1);
+ }finally{database.close();}
+});
 test('routed origins work without domain variables, ignore forwarded hosts and keep private CORS closed',async()=>{
   const {store,database}=repository(),env=environment(store);
   try{
@@ -36,7 +46,7 @@ test('authentication, CSRF, publisher permissions and ownership protect privileg
 test('direct upload uses the resource account token, private uploads and opaque application IDs',async()=>{
   const {store,database}=repository(),env=environment(store),owner=await login(store),calls=[];
   const network=async(url,options)=>{
-    calls.push({url,options});assert.ok(url.includes('/accounts/'+env.IMAGES_ACCOUNT_ID+'/'));assert.equal(options.headers.Authorization,'Bearer '+env.MEDIA_API_TOKEN);
+    calls.push({url,options});assert.equal(options.redirect,'manual');assert.ok(url.includes('/accounts/'+env.IMAGES_ACCOUNT_ID+'/'));assert.equal(options.headers.Authorization,'Bearer '+env.MEDIA_API_TOKEN);
     assert.equal(options.body.get('requireSignedURLs'),'true');assert.equal(options.body.get('creator'),'ishare:42');assert.equal(options.body.has('id'),false);
     return Response.json({success:true,result:{id:'provider-id-123456789012345',uploadURL:'https://upload.imagedelivery.net/capability'}});
   };

@@ -15,7 +15,7 @@
   <header class="topbar">
     <a class="brand" href="/" aria-label="ishare"><img src="/brand/bear-icon.3754101e8d6380da.png" alt="" width="40" height="40"><span>ishare</span></a>
     <nav aria-label="{{site.mainNavigationLabel}}">{{{site.primaryNavigationHtml}}}</nav>
-    <div class="actions">{{{site.localeLinksHtml}}}<a class="button button-primary" id="login" href="/auth" data-i18n="login">Sign in with GitHub</a><button id="logout" hidden data-i18n="logout">Sign out</button><span id="identity"></span></div>
+    <div class="actions">{{{site.localeLinksHtml}}}<div class="account-controls"><a id="admin-link" href="/admin/" hidden data-i18n="adminPage">Administration</a><span id="identity" hidden></span><button id="logout" hidden data-i18n="logout">Sign out</button></div></div>
   </header>
   <main id="main">{{{page.content}}}</main>
   <footer class="site-footer">

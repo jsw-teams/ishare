@@ -1,4 +1,4 @@
-import { ServiceError, fail, requestOrigin, https, text, number, id, digest, jsonBody, json } from './security.js';
+import { ServiceError, fail, requestOrigin, text, number, id, digest, jsonBody, json, headers } from './security.js';
 import { authReady, readSession, requireSite, requireCsrf, authorize, callback, logout } from './auth.js';
 import { provider, resourceConfiguration } from './provider.js';
 import { publicRecord, oembed, shareId, renderPage } from './views.js';
@@ -7,7 +7,7 @@ import { changes, accountId, exceeds, settingsChange } from './quotas.js';
 import { rpcStore } from './rpc.js';
 const imageTypes=['image/jpeg','image/png','image/gif','image/webp','image/avif'];
 const videoTypes=['video/mp4','video/webm','video/quicktime','video/x-matroska'];
-const methodFor={feed:'GET',history:'GET','create-post':'POST','delete-post':'POST','set-visibility':'POST','admin-settings':'GET','admin-set-settings':'POST',session:'GET',list:'GET','get-upload':'GET',get:'GET',oembed:'GET','create-upload':'POST',publish:'POST',delete:'POST',logout:'POST','admin-users':'GET','admin-user':'GET','admin-set-user':'POST','admin-list':'GET','admin-audit':'GET','admin-reconcile':'POST','admin-rights':'GET','admin-resolve-right':'POST',export:'GET',rights:'GET','request-right':'POST','erase-account':'POST'};
+const methodFor={avatar:'GET',feed:'GET',history:'GET','create-post':'POST','delete-post':'POST','set-visibility':'POST','admin-settings':'GET','admin-set-settings':'POST',session:'GET',list:'GET','get-upload':'GET',get:'GET',oembed:'GET','create-upload':'POST',publish:'POST',delete:'POST',logout:'POST','admin-users':'GET','admin-user':'GET','admin-set-user':'POST','admin-list':'GET','admin-audit':'GET','admin-reconcile':'POST','admin-rights':'GET','admin-resolve-right':'POST',export:'GET',rights:'GET','request-right':'POST','erase-account':'POST'};
 const privateActions=new Set(Object.keys(methodFor).filter(key=>!['get','oembed','feed'].includes(key)));
 const ready=(env,kind)=>{try{resourceConfiguration(env,kind);return true;}catch{return false;}};
 const allowedPublisher=(env,user)=>user?.id===env.OWNER_GITHUB_ID||!env.PUBLISHER_IDS||env.PUBLISHER_IDS==='*'||env.PUBLISHER_IDS.split(',').map(s=>s.trim()).includes(user?.id);
@@ -56,10 +56,16 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     if(request.method!==methodFor[action])fail('method_not_allowed',405);
     if(privateActions.has(action))requireSite(request);
     const session=privateActions.has(action)?await readSession(request,store,now):null;
-    if(action==='feed'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.feed(cursor,env.OWNER_GITHUB_ID,now);return json({...data,items:data.items.map(item=>publicRecord(item,site))},200,{...cors,'Cache-Control':'public, max-age=30'});}
+    if(action==='feed'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.feed(cursor,env.OWNER_GITHUB_ID,now);return json({...data,items:data.items.map(item=>publicRecord(item,site))},200,{...cors,'Cache-Control':'public, max-age=30',Vary:'X-Service-Action, X-Service-Resource'});}
     if(action==='get'||action==='oembed'){
       const key=action==='oembed'?shareId(resource(request),site):id(resource(request));
       const item=await store.publicShare(key,env.OWNER_GITHUB_ID,now);return json(action==='get'?publicRecord(item,site):oembed(item,site),200,cors);
+    }
+    if(action==='avatar'){
+      if(!session)fail('login_required',401);accountId(session.user.id);
+      let image;try{image=await requestUpstream('https://avatars.githubusercontent.com/u/'+session.user.id+'?s=96',{redirect:'manual',signal:AbortSignal.timeout(15000)});}catch{fail('avatar_unavailable',503);}
+      const type=(image.headers.get('Content-Type')||'').split(';')[0];if(!image.ok||!['image/png','image/jpeg','image/webp','image/gif'].includes(type))fail('avatar_unavailable',503);
+      return new Response(image.body,{headers:headers({'Content-Type':type,'Cache-Control':'private, max-age=3600',Vary:'Cookie, X-Service-Action, X-Service-Resource'})});
     }
     const settings=await store.quotaSettings(now),base=settings.defaults,account=session?await store.account(session.user.id,base,env.OWNER_GITHUB_ID,now):null;
     if(action==='session')return json({user:session?.user||null,csrf:session?.csrf||null,loginAvailable:authReady(env),canPublish:!!session&&allowedPublisher(env,session.user)&&!account.blocked&&!account.sharingBlocked,isAdmin:admin(env,session?.user),account,imagesAvailable:ready(env,'image'),videosAvailable:ready(env,'video'),maxVideoDuration:account?.limits.videoDuration??36000,maxVideoBytes:29_999_999_999,quotaNotice:settings.pending?{effective:settings.pending.effective,note:settings.note}:null});
@@ -91,20 +97,20 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     if(action==='set-visibility'){if(typeof body.listed!=='boolean')fail('invalid_field');return json(publicRecord(await store.visibility(id(resource(request)),session.user.id,body.listed,env.OWNER_GITHUB_ID),site));}
     if(action==='create-post'){
       if(!allowedPublisher(env,session.user)||account.blocked||account.sharingBlocked)fail('publishing_suspended',403);
-      if(Object.keys(body).some(key=>!['title','caption','sourceUrl','sourceName','mediaIds','listed'].includes(key))||!Array.isArray(body.mediaIds)||body.mediaIds.length>50||typeof body.listed!=='boolean')fail('invalid_post');
-      const data={id:resource(request)?id(resource(request)):crypto.randomUUID().replaceAll('-',''),owner:session.user.id,author:session.user,title:text(body.title,200),caption:text(body.caption,5000,true),sourceUrl:body.sourceUrl?https(body.sourceUrl).href:'',sourceName:text(body.sourceName,120,true),mediaIds:body.mediaIds.map(id),listed:body.listed};
+      if(Object.keys(body).some(key=>!['title','caption','mediaIds','listed'].includes(key))||!Array.isArray(body.mediaIds)||body.mediaIds.length>50||typeof body.listed!=='boolean')fail('invalid_post');
+      const data={id:resource(request)?id(resource(request)):crypto.randomUUID().replaceAll('-',''),owner:session.user.id,author:session.user,title:text(body.title,200),caption:text(body.caption,5000,true),sourceUrl:'',sourceName:'',mediaIds:body.mediaIds.map(id),listed:body.listed};
       if(session.user.id!==env.OWNER_GITHUB_ID)await store.rate('posts:'+session.user.id,100,now,86400);return json(publicRecord(await store.createPost(data,env.OWNER_GITHUB_ID,now),site),201);
     }
     if(action==='create-upload'){
       if(!allowedPublisher(env,session.user)||account.blocked||account.sharingBlocked)fail('publishing_suspended',403);
-      for(const key of Object.keys(body))if(!['kind','title','caption','sourceUrl','sourceName','bytes','mime','duration'].includes(key))fail('invalid_field');
+      for(const key of Object.keys(body))if(!['kind','title','caption','bytes','mime','duration'].includes(key))fail('invalid_field');
       if(!['image','video'].includes(body.kind))fail('invalid_kind');resourceConfiguration(env,body.kind);
       if(!(body.kind==='image'?imageTypes:videoTypes).includes(body.mime))fail('unsupported_media_type',415);
       const bytes=body.bytes;if(!Number.isSafeInteger(bytes)||bytes<1)fail('invalid_size');if(bytes>(body.kind==='image'?10_000_000:29_999_999_999))fail('file_too_large',413);
       const duration=body.kind==='image'?0:body.duration;if(!Number.isSafeInteger(duration)||duration<0||body.kind==='video'&&(duration<1||duration>36000))fail('invalid_duration');
       if(body.kind==='video'&&exceeds(duration,account.limits.videoDuration))fail('upload_quota',429);
-      const sourceUrl=body.sourceUrl?https(body.sourceUrl).href:'';
-      const title=text(body.title,200),caption=text(body.caption,5000,true),sourceName=text(body.sourceName,120,true);
+      const sourceUrl='';
+      const title=text(body.title,200),caption=text(body.caption,5000,true),sourceName='';
       const applicationId=crypto.randomUUID().replaceAll('-','');
       const item=await store.reserve({id:applicationId,owner:session.user.id,author:session.user,kind:body.kind,title,caption,sourceUrl,sourceName,bytes,mime:body.mime,duration},{defaults:base,ownerId:env.OWNER_GITHUB_ID,...settings.shared},now);
       try{const grant=await upstream.create(item,now);await store.attach(applicationId,grant.providerId,grant.uploadUrl,now);return json({id:applicationId,uploadUrl:grant.uploadUrl,protocol:grant.protocol},201);}catch(error){if(error.safeToRelease)await store.failed(applicationId);else await store.uncertain(applicationId);throw error;}
