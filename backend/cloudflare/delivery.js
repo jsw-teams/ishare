@@ -63,7 +63,7 @@ export async function deliver(request,env,item,resource,store,context,{requestUp
   if(!manifest&&!range&&cache){const hit=await cache.match(cacheKey);if(hit)return new Response(request.method==='HEAD'?null:hit.body,{status:hit.status,headers:hit.headers});}
   let response;
   try{response=await requestUpstream(upstream,{method:'GET',headers:{...(item.kind==='image'?{Authorization:'Bearer '+env.MEDIA_API_TOKEN}:{}),...(range?{Range:range}:{})},redirect:'manual',signal:AbortSignal.timeout(20000)});}catch{fail('media_unavailable',503);}
-  if(![200,206].includes(response.status)){await response.body?.cancel();fail('media_unavailable',response.status===404?404:502);}
+  if(![200,206].includes(response.status)){await response.body?.cancel();fail([404,410].includes(response.status)?'media_missing':'media_unavailable',[404,410].includes(response.status)?404:502);}
   const mime=(response.headers.get('content-type')||'').split(';')[0].toLowerCase();
   if(item.kind==='image'&&!/^image\/(jpeg|png|webp|avif|gif)$/.test(mime)){await response.body?.cancel();fail('invalid_upstream',502);}
   if(item.kind==='video'&&!/^(application\/(vnd\.apple\.mpegurl|x-mpegurl|octet-stream)|video\/(mp2t|mp4)|audio\/(mp4|aac|mpeg)|text\/vtt)$/.test(mime)){await response.body?.cancel();fail('invalid_upstream',502);}

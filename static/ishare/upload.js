@@ -1,10 +1,23 @@
-export async function uploadFile(file,grant,onProgress=()=>{},{signal,request=fetch}={}) {
+function imageUpload(url,file,onProgress,signal,createRequest){
+  return new Promise((resolve,reject)=>{
+    if(signal?.aborted){reject(new DOMException('Upload paused','AbortError'));return;}
+    const xhr=createRequest(),abort=()=>xhr.abort(),finish=(error)=>{signal?.removeEventListener('abort',abort);if(error)reject(error);else{onProgress(1);resolve();}};
+    xhr.open('POST',url.href);xhr.withCredentials=false;xhr.responseType='json';
+    xhr.upload.addEventListener('progress',event=>{if(event.lengthComputable&&event.total>0)onProgress(Math.min(1,event.loaded/event.total));});
+    xhr.addEventListener('load',()=>{if(xhr.status<200||xhr.status>=300||xhr.response?.success!==true||xhr.responseURL!==url.href)finish(new Error('upload_failed'));else finish();});
+    xhr.addEventListener('error',()=>finish(new Error('upload_failed')));
+    xhr.addEventListener('abort',()=>finish(new DOMException('Upload paused','AbortError')));
+    signal?.addEventListener('abort',abort,{once:true});
+    const body=new FormData();body.set('file',file,file.name);onProgress(0);xhr.send(body);
+  });
+}
+export async function uploadFile(file,grant,onProgress=()=>{},{signal,request=fetch,createRequest=()=>new XMLHttpRequest()}={}) {
   const url=new URL(grant.uploadUrl);
   if(url.protocol!=='https:'||url.username||url.password||!['upload.imagedelivery.net','upload.videodelivery.net'].includes(url.hostname))throw new Error('invalid_upload_url');
   const send=options=>request(url,{...options,credentials:'omit',redirect:'error',signal});
   if(grant.protocol==='post'){
-    const body=new FormData();body.set('file',file,file.name);const response=await send({method:'POST',body});
-    if(!response.ok)throw new Error('upload_failed');onProgress(1);return;
+    if(url.hostname!=='upload.imagedelivery.net')throw new Error('invalid_upload_protocol');
+    await imageUpload(url,file,onProgress,signal,createRequest);return;
   }
   if(grant.protocol!=='tus'||url.hostname!=='upload.videodelivery.net')throw new Error('invalid_upload_protocol');
   let offset=0,attempts=0;

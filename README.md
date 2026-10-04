@@ -10,6 +10,8 @@ Write a story first, then add multiple image or video attachments. Publish compl
 
 ![Text-first multi-attachment composer, local demonstration data](docs/images/my-shares-desktop.png)
 
+![Upload progress with byte totals and a separate confirmation stage, local demonstration data](docs/images/upload-progress.png)
+
 ![Personal center with editable display name, biography and data rights, local demonstration data](docs/images/profile-preview.png)
 
 ![User administration with selected tabs and graphical usage, local demonstration data](docs/images/admin-preview.png)
@@ -65,11 +67,11 @@ blocks:
 
 EdgePress waits for current service consent **and** a visitor click. Metadata uses fixed `/api` with `X-Service-Action: oembed` and `X-Service-Resource` headers. Standard consumers can use `/oembed?url=...`; the standard protocol is an explicit exception to business API header routing. Media delivery URLs contain opaque application IDs and encrypted HLS resource tickets, never provider IDs or original delivery URLs. One-time direct upload URLs are visible to the authenticated uploader, and grant neither account access nor playback access.
 
-Hashed CSS, JavaScript and bundled HLS dependencies cache for one year. Public media caches for up to five minutes; HTML for thirty seconds. Sessions, administration and rights requests are never publicly cached. No external player CDN, analytics, advertising, paywall or blurred-media flow is included.
+Hashed CSS, JavaScript and bundled HLS dependencies cache for one year. Public media caches for up to five minutes; HTML for thirty seconds. Private page bootstrap reads session and initial page data in one authorized DO call. Hidden admin sections load on demand; identical in-flight reads share one request. Sessions, administration and rights requests are never publicly cached. Missing or unavailable upstream media shows an accessible placeholder and explicit retry on cards, share pages and embeds, preserving text and other attachments. Delivery failures do not erase records or alter storage quotas. No external player CDN, analytics, advertising, paywall or blurred-media flow is included.
 
 ## Verification
 
-`npm test` checks ownership, CSRF, direct-upload token handling, atomic quotas, operator exemption, quota notices, suspension/appeal/export/erasure, HLS URL rewriting, browser administration, and real Cloudflare SQLite/RPC/static routing. Browser tests use local fixtures; they do not certify real provider uploads or account configuration.
+`npm test` checks Images publication using the current API `meta` response field, byte-based image upload progress, cancellation and retry without reuploading confirmed attachments, isolated media deletion/network failure feedback and recovery, single-call page bootstrap with authorization and in-flight request deduplication, plus ownership, CSRF, direct-upload token handling, atomic quotas, operator exemption, quota notices, suspension/appeal/export/erasure, HLS URL rewriting, browser administration, and real Cloudflare SQLite/RPC/static routing. Browser tests use local fixtures; they do not certify real provider uploads or account configuration.
 
 ## Source and deployment
 

@@ -21,7 +21,7 @@ export async function renderPage(item,env,site,embedded=false) {
   const record=publicRecord(item,site),assetResponse=await env.ASSETS.fetch(new Request(site+'/assets.json'));
   if(!assetResponse.ok)fail('assets_unavailable',503);const assets=await assetResponse.json();
   const attachments=item.kind==='post'?record.media:[record],hasVideo=attachments.some(child=>child.kind==='video'),firstImage=attachments.find(child=>child.kind==='image');
-  const media=attachments.map(child=>`<figure class="post-attachment">${child.kind==='image'?`<img src="${child.mediaUrl}" alt="${escape(child.title)}" decoding="async" loading="lazy">`:`<video controls playsinline preload="none" data-source="${child.mediaUrl}" aria-label="${escape(child.title)}"><p><a href="${child.mediaUrl}">Open video</a></p></video>`}</figure>`).join('');
+  const media=attachments.map(child=>`<figure class="post-attachment">${child.kind==='image'?`<img data-media src="${child.mediaUrl}" alt="${escape(child.title)}" decoding="async" loading="lazy">`:`<video controls playsinline preload="none" data-source="${child.mediaUrl}" aria-label="${escape(child.title)}"><p><a href="${child.mediaUrl}">Open video</a></p></video>`}</figure>`).join('');
   const attribution=`<footer class="attribution"><a href="${record.author.url}" target="_blank" rel="noopener noreferrer" class="author-link"><img width="32" height="32" alt="" src="/brand/bear-favicon.52039e84b2f38015.png" data-author-avatar="${record.author.id}">${escape(record.author.name||record.author.login)} (@${escape(record.author.login)})</a>${record.source.url?`<span> / </span><a href="${escape(record.source.url)}" target="_blank" rel="noopener noreferrer">${escape(record.source.name||'Source')}</a>`:''}<a href="${record.shareUrl}" target="_blank" rel="noopener noreferrer">ishare</a></footer>`;
   const discovery=`<link rel="alternate" type="application/json+oembed" href="${site}/oembed?url=${encodeURIComponent(record.shareUrl)}">`;
   const shell=await env.ASSETS.fetch(new Request(site+(assets.shell||'/share-shell.html')));if(!shell.ok)fail('assets_unavailable',503);
@@ -31,6 +31,7 @@ export async function renderPage(item,env,site,embedded=false) {
   body=body.replace(/<select id="site-language"[\s\S]*?<\/select>/,'');
   if(embedded)body=body.replace('<html lang="en">','<html lang="en" class="embedded">').replace(/<header\b[\s\S]*?<\/header>/,'').replace(/<footer class="site-footer"[\s\S]*?<\/footer>/,'').replace(/<script\b[^>]*>[\s\S]*?<\/script>/g,'');
   if(assets.avatars)body=body.replace('</body>',`<script type="module" src="${assets.avatars}"></script></body>`);
+  if(firstImage)body=body.replace('</body>',`<script type="module" src="${assets.media}"></script></body>`);
   if(hasVideo)body=body.replace('</body>',`<script type="module" src="${assets.player}"></script></body>`);
   return new Response(body,{headers:headers({'Content-Type':'text/html; charset=utf-8','Cache-Control':'public, max-age=30','Content-Security-Policy':`default-src 'none'; img-src 'self' blob:; style-src 'self'; script-src 'self'; connect-src 'self'; media-src 'self' blob:; worker-src blob:; base-uri 'none'; form-action 'none'; frame-ancestors ${embedded?'https:':"'none'"}`},embedded)});
 }

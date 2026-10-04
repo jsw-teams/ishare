@@ -28,6 +28,7 @@ export class ShareStore extends DurableObject {
   consumeAuth(...args){return this.invoke('consumeAuth',args);}
   makeSession(...args){return this.invoke('makeSession',args);}
   session(...args){return this.invoke('session',args);}
+  snapshot(...args){return this.invoke('snapshot',args);}
   account(...args){return this.invoke('account',args);}
   users(...args){return this.invoke('users',args);}
   setAccount(...args){return this.invoke('setAccount',args);}

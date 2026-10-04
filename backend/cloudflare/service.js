@@ -1,4 +1,4 @@
-import { ServiceError, fail, requestOrigin, text, number, id, digest, jsonBody, json, headers } from './security.js';
+import { ServiceError, fail, requestOrigin, text, number, id, digest, cookie, jsonBody, json, headers } from './security.js';
 import { authReady, readSession, requireSite, requireCsrf, authorize, callback, logout } from './auth.js';
 import { provider, resourceConfiguration } from './provider.js';
 import { publicRecord, oembed, shareId, renderPage, renderProfile } from './views.js';
@@ -9,6 +9,8 @@ const imageTypes=['image/jpeg','image/png','image/gif','image/webp','image/avif'
 const videoTypes=['video/mp4','video/webm','video/quicktime','video/x-matroska'];
 const methodFor={'profile-feed':'GET','profile-avatar':'GET','profile':'GET','set-profile':'POST',avatar:'GET',feed:'GET',history:'GET','create-post':'POST','delete-post':'POST','set-visibility':'POST','admin-settings':'GET','admin-set-settings':'POST',session:'GET',list:'GET','get-upload':'GET',get:'GET',oembed:'GET','create-upload':'POST',publish:'POST',delete:'POST',logout:'POST','admin-users':'GET','admin-user':'GET','admin-set-user':'POST','admin-list':'GET','admin-audit':'GET','admin-reconcile':'POST','admin-rights':'GET','admin-resolve-right':'POST',export:'GET',rights:'GET','request-right':'POST','erase-account':'POST'};
 const privateActions=new Set(Object.keys(methodFor).filter(key=>!['get','oembed','feed','profile','profile-feed','profile-avatar'].includes(key)));
+const accountActions=new Set(['export','get-upload','create-post','create-upload','publish']);
+const settingsActions=new Set([...accountActions,'admin-settings','admin-set-settings','admin-users','admin-user','admin-set-user']);
 const ready=(env,kind)=>{try{resourceConfiguration(env,kind);return true;}catch{return false;}};
 const allowedPublisher=(env,user)=>user?.id===env.OWNER_GITHUB_ID||!env.PUBLISHER_IDS||env.PUBLISHER_IDS==='*'||env.PUBLISHER_IDS.split(',').map(s=>s.trim()).includes(user?.id);
 const admin=(env,user)=>!!user&&(user.id===env.OWNER_GITHUB_ID||env.ADMIN_IDS?.split(',').map(s=>s.trim()).includes(user.id));
@@ -57,6 +59,13 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     const action=request.headers.get('X-Service-Action');if(!Object.hasOwn(methodFor,action||''))fail('unknown_action',404);
     if(request.method!==methodFor[action])fail('method_not_allowed',405);
     if(privateActions.has(action))requireSite(request);
+    if(action==='session'){
+      const page=resource(request);if(!['','mine','profile','admin'].includes(page))fail('invalid_resource');
+      const token=cookie(request,'__Host-ishare-session'),hash=/^[\w-]{43}$/.test(token)?await digest(token):null;
+      const {session,settings,account,initial}=await store.snapshot(hash,page,env.OWNER_GITHUB_ID,(env.ADMIN_IDS||'').split(',').map(value=>value.trim()),now);
+      if(initial?.history)initial.history.items=initial.history.items.map(item=>publicRecord(item,site));
+      return json({user:session?.user||null,profile:session?.profile||null,csrf:session?.csrf||null,loginAvailable:authReady(env),canPublish:!!session&&allowedPublisher(env,session.user)&&!account.blocked&&!account.sharingBlocked,isAdmin:admin(env,session?.user),account,initial,imagesAvailable:ready(env,'image'),videosAvailable:ready(env,'video'),maxVideoDuration:account?.limits.videoDuration??36000,maxVideoBytes:29_999_999_999,quotaNotice:settings.pending?{effective:settings.pending.effective,note:settings.note}:null});
+    }
     const session=privateActions.has(action)?await readSession(request,store,now):null;
     if(action==='feed'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.feed(cursor,env.OWNER_GITHUB_ID,now);return json({...data,items:data.items.map(item=>publicRecord(item,site))},200,{...cors,'Cache-Control':'public, max-age=30',Vary:'X-Service-Action, X-Service-Resource'});}
     if(action==='get'||action==='oembed'){
@@ -75,9 +84,8 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
       const type=(image.headers.get('Content-Type')||'').split(';')[0];if(!image.ok||!['image/png','image/jpeg','image/webp','image/gif'].includes(type))fail('avatar_unavailable',503);
       return new Response(image.body,{headers:headers({'Content-Type':type,'Cache-Control':action==='avatar'?'private, max-age=3600':'public, max-age=300',Vary:'Cookie, X-Service-Action, X-Service-Resource'})});
     }
-    const settings=await store.quotaSettings(now),base=settings.defaults,account=session?await store.account(session.user.id,base,env.OWNER_GITHUB_ID,now):null;
-    if(action==='session')return json({user:session?.user||null,profile:session?.profile||null,csrf:session?.csrf||null,loginAvailable:authReady(env),canPublish:!!session&&allowedPublisher(env,session.user)&&!account.blocked&&!account.sharingBlocked,isAdmin:admin(env,session?.user),account,imagesAvailable:ready(env,'image'),videosAvailable:ready(env,'video'),maxVideoDuration:account?.limits.videoDuration??36000,maxVideoBytes:29_999_999_999,quotaNotice:settings.pending?{effective:settings.pending.effective,note:settings.note}:null});
     if(!session)fail('login_required',401);
+    const settings=settingsActions.has(action)?await store.quotaSettings(now):null,base=settings?.defaults,account=accountActions.has(action)?await store.account(session.user.id,base,env.OWNER_GITHUB_ID,now):null;
     if(action.startsWith('admin-')){
       if(!admin(env,session.user))fail('admin_required',403);
       if(action==='admin-settings'||action==='admin-set-settings'){if(session.user.id!==env.OWNER_GITHUB_ID)fail('owner_required',403);if(action==='admin-settings')return json(settings);requireCsrf(request,session);return json(await store.setQuotaSettings(settingsChange(await jsonBody(request)),session.user.id,now));}

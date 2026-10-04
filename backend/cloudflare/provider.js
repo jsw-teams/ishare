@@ -15,7 +15,8 @@ export function provider(env,request=fetch) {
     const {account,token}=resourceConfiguration(env,kind);
     let response;
     try{response=await request(`https://api.cloudflare.com/client/v4/accounts/${account}/${path}`,{...options,headers:{Authorization:'Bearer '+token,...options.headers},redirect:'manual',signal:AbortSignal.timeout(20000)});}catch{fail('upstream_unavailable',503);}
-    if(options.method==='DELETE'&&response.status===404)return {};
+    if(options.method==='DELETE'&&[404,410].includes(response.status)){await response.body?.cancel();return {};}
+    if([404,410].includes(response.status)&&/^((images\/v1|stream)\/[^/]+)(\/token)?$/.test(path)){await response.body?.cancel();fail('media_missing',404);}
     if(!response.ok){const error=new ServiceError('upstream_unavailable',503);error.safeToRelease=[400,401,403,422].includes(response.status);throw error;}
     const result=await response.json().catch(()=>null);
     if(!result?.success||!result.result)fail('upstream_unavailable',503);
@@ -46,7 +47,7 @@ export function provider(env,request=fetch) {
       if(result.requireSignedURLs!==true)fail('unsafe_upstream',409);
       if(item.kind==='image'){
         if(result.draft===true||!result.uploaded)fail('processing',409);
-        if(result.metadata?.ishare!==item.id)fail('invalid_upstream',409);
+        if(result.meta?.ishare!==item.id)fail('invalid_upstream',409);
         return 0;
       }
       if(result.readyToStream!==true)fail(result.status?.state==='error'?'upload_failed':'processing',409);

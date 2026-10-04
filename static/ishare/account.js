@@ -1,13 +1,14 @@
 import {messages} from './i18n.js';
-export function serviceClient(){
- let session=null;
- async function request(action,{resource,body,signal}={}){
+export function serviceClient(page=''){
+ let session=null;const pending=new Map();
+ async function transport(action,{resource,body,signal}={}){
   const headers={'X-Service-Action':action};if(resource)headers['X-Service-Resource']=encodeURIComponent(resource);
   if(body){headers['Content-Type']='application/json';headers['X-CSRF-Token']=session?.csrf||'';}
   const response=await fetch('/api',{method:body?'POST':'GET',headers,body:body?JSON.stringify(body):undefined,credentials:'same-origin',cache:'no-store',redirect:'error',signal});
   const data=await response.json();if(!response.ok){const error=new Error(data.error||'request_failed');error.status=response.status;throw error;}return data;
  }
- return {request,async read(){session=await request('session');return session;}};
+ function request(action,options={}){if(options.body||options.signal)return transport(action,options);const key=JSON.stringify([action,options.resource||'']);if(!pending.has(key))pending.set(key,transport(action,options).finally(()=>pending.delete(key)));return pending.get(key);}
+ return {request,async read(){session=await request('session',{resource:page});return session;}};
 }
 let avatarUser=null,avatarUrl=null,generation=0;
 const publicAvatars=new Map();

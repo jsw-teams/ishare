@@ -64,6 +64,12 @@ export class Repository {
   consumeAuth(hash,now) { const record=this.one('DELETE FROM auth WHERE id=? RETURNING *',hash);return record?.expires>now?record.verifier:undefined; }
   makeSession(hash,identity,csrf,now) { this.sql.exec('INSERT INTO sessions VALUES (?,?,?,?)',hash,JSON.stringify(identity),csrf,now+86400);this.sql.exec('INSERT INTO users(id,identity,updated) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET identity=excluded.identity',identity.id,JSON.stringify(identity),now); }
   session(hash,now) { const row=this.one('SELECT * FROM sessions WHERE id=? AND expires>?',hash,now);if(!row)return null;const user=JSON.parse(row.identity),profile=this.profile(user.id,true);return {user:{...user,name:profile.displayName},profile,csrf:row.csrf}; }
+  snapshot(hash,page,ownerId,adminIds,now){
+    const session=hash?this.session(hash,now):null,settings=this.quotaSettings(now),account=session?this.account(session.user.id,settings.defaults,ownerId,now):null;
+    let initial=null;
+    if(session){if(page==='mine')initial={history:this.history(session.user.id)};if(page==='profile')initial={rights:{items:this.rights(session.user.id)}};if(page==='admin'&&(session.user.id===ownerId||adminIds.includes(session.user.id)))initial=session.user.id===ownerId?{settings}:{users:this.users('',settings.defaults,ownerId,now)};}
+    return {session,settings,account,initial};
+  }
   logout(hash) { this.sql.exec('DELETE FROM sessions WHERE id=?',hash); }
   usage(owner,now) {return {...this.one("SELECT coalesce(sum(bytes),0) AS storageBytes, coalesce(sum(CASE WHEN kind='image' THEN 1 ELSE 0 END),0) AS images, coalesce(sum(CASE WHEN kind='video' THEN duration ELSE 0 END),0) AS videoSeconds FROM media WHERE owner=? AND state NOT IN ('deleted','failed')",owner),dailyUploads:this.one('SELECT count(*) AS n FROM media WHERE owner=? AND created>=?',owner,now-now%86400).n};}
   activate(owner,now){const row=this.one('SELECT * FROM users WHERE id=?',owner);if(row?.pending&&row.effective<=now){const next=JSON.parse(row.pending);this.sql.exec('UPDATE users SET policy=?,blocked=?,pending=NULL,effective=NULL WHERE id=?',JSON.stringify(next.limits),Number(next.blocked),owner);}return this.one('SELECT * FROM users WHERE id=?',owner);}
