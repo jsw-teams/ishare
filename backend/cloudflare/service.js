@@ -122,5 +122,9 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
       await upstream.remove(marked);await store.deleted(mediaId);return json({ok:true});
     }
     fail('unknown_action',404);
-  } catch(error) {return json({error:error instanceof ServiceError?error.message:'service_unavailable'},error instanceof ServiceError?error.status:503);}
+  } catch(error) {
+    const code=error instanceof ServiceError?error.message:'service_unavailable';
+    if(url.pathname==='/auth/callback'&&!request.headers.get('Accept')?.includes('application/json'))return new Response(null,{status:303,headers:{Location:site+'/mine/#login-error='+encodeURIComponent(code),'Cache-Control':'no-store','Referrer-Policy':'no-referrer','Set-Cookie':'__Host-ishare-oauth=; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=0'}});
+    return json({error:code},error instanceof ServiceError?error.status:503);
+  }
 }

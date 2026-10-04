@@ -19,6 +19,8 @@
 
 域名路由由你配置为 `ishare.js.gripe`，指向现有 ishare Worker。`workers.dev` 和预览域名保持关闭。构建变量与运行时 Secret 是不同配置位置，见 [Cloudflare 构建设置](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)。
 
+如果克隆后提示 `root directory not found`，先确认部署仓库为 `jsw-teams/web`，再把旧的 `/share.js.gripe` 根目录改为 `/ishare.js.gripe`。公开源码仓库 `jsw-teams/ishare` 的项目位于仓库根目录，独立部署该分发源码时根目录应为 `/`。修改站点域名或 Wrangler 配置不会自动更新控制台里的 Git 构建根目录。
+
 ## 运行时 Secret
 
 在 **ishare Worker → Settings → Variables and Secrets** 中添加下列值，类型均选 **Secret**。已有同名条目请直接编辑。
@@ -35,6 +37,8 @@ Images 与 Stream 使用同一个资源账户，此账户可以与 Worker 所在
 已有 Secret 无需重复填写：读取顺序为 `STREAM_ACCOUNT_ID` → `IMAGES_ACCOUNT_ID` → 旧名 `STREAM_CUSTOMER_CODE`。旧名兼容的是你此前存入的 **账户 ID**，不是播放器 customer code。后端通过 Stream API 获取播放域名，缓存签名播放地址；无需手填 customer code。以后整理 Secret 时可保留 `STREAM_ACCOUNT_ID` 一个账户条目，但加密值不能由部署工具读取并自动改名。
 
 当前 ishare 的登录回调为 `https://ishare.js.gripe/auth/callback`。现有 iask App 的回调保持原配置；使用独立 OAuth App 时，Homepage 填 `https://ishare.js.gripe`，Authorization callback URL 填上述 ishare 回调。现有实现不会自动把 ishare 登录转发到 iask。
+
+登录入口只放在“我的分享”的未登录提示区。回调失败会返回本地可读提示；重新点击登录会生成新的单次授权状态，不应刷新或重复使用旧回调 URL。后端以表单提交交换请求，显式接收并拒绝上游重定向，不跟随带有凭据的请求跳转，也不返回 GitHub 的原始错误描述、授权码或令牌。
 
 业务域名由 Worker 当前请求自动取得，不依赖 `SITE_ORIGIN` 或 `WEBSITE_ORIGINS`，旧条目可以删除。公开元数据允许任意网站读取；登录、账户管理及写入仍限同源并校验 CSRF。只需在 `config.yml` 的 `site.url` 填写静态页面的正式网址。运营者数字 ID `228026986` 保留在 `wrangler.jsonc`。运营者使用该 GitHub 账户登录，进入“我的分享 → 平台配额”，在线调整新用户默认额度与共享容量；在“用户管理”调整个人配额、权限及处理隐私请求。配额存于 SQLite，不再读取 `MAX_*` 或 `QUOTA_*` 系统变量。普通共享容量降低提前七天通知；新用户默认额度变化保留已有用户当前及已排定额度。
 

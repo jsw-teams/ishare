@@ -15,7 +15,7 @@ export default function application(api){
     html=html.replaceAll('<span>ishare</span>','<span>'+brand+'</span>').replaceAll('aria-label="ishare"','aria-label="'+brand+'"').replaceAll('content="ishare"','content="'+brand+'"').replaceAll(' - ishare</title>',' - '+brand+'</title>');
     for(const path of ['mine/','guide/'])html=html.replaceAll('href="/'+path+'"','href="'+localizedUrl(config,page.locale,path)+'"');
     html=html.replaceAll('class="brand" href="/"','class="brand" href="'+localizedUrl(config,page.locale,'')+'"');
-    if(html.includes('id="publish-form"'))return html.replace('</body>','<script type="module" src="/ishare/app.js"></script></body>');
+    if(html.includes('id="publish-form"'))return html.replace(/<a class="button button-primary" id="login"[^>]*>[\s\S]*?<\/a>/,'').replace('</body>','<script type="module" src="/ishare/app.js"></script></body>');
     if(html.includes('id="feed"'))html=html.replace('</body>','<script type="module" src="/ishare/feed.js"></script></body>');
     // Privacy pages do not initialize the publishing application or call /api.
     return html.replace(/<a class="button button-primary" id="login"[\s\S]*?<span id="identity"><\/span>/,'');

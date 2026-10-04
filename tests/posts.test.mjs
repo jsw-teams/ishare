@@ -20,7 +20,7 @@ test('multi-attachment posts require ownership, are idempotent and enter the fee
  await handle(request('set-visibility',{...publisher,resource:post,body:{listed:false}}),env,ctx);assert.equal(store.feed('','99',now()).items.length,0);
  await handle(request('set-visibility',{...publisher,resource:post,body:{listed:true}}),env,ctx);store.setAccount('42',{sharingBlocked:true,urgent:true,note:'Abuse review'},'99','99',now(),store.quotaSettings(now()).defaults);assert.equal(store.feed('','99',now()).items.length,0);
  assert.equal((await handle(request('export',publisher),env,ctx)).status,200);
- assert.equal((await handle(request('delete-post',{...publisher,resource:post,body:{}}),env,ctx)).status,202);assert.throws(()=>store.publicShare(post,'99',now()),/not_found/);assert.equal(store.get(first).state,'deleting');assert.equal(store.get(second).state,'deleting');assert.equal(store.get(other).state,'published');assert.equal(store.cleanup(now()).length,2);
+ assert.equal((await handle(request('delete-post',{...publisher,resource:post,body:{}}),env,ctx)).status,202);assert.throws(()=>store.publicShare(post,'99',now()),/not_found/);assert.equal(store.get(first).state,'deleting');assert.equal(store.get(second).state,'deleting');assert.equal(store.get(other).state,'published');const pendingExport=await(await handle(request('export',publisher),env,ctx)).json();assert.equal(pendingExport.items[0].kind,'post');assert.equal(pendingExport.items[0].state,'deleting');assert.equal(pendingExport.items[0].media.length,2);assert.equal(store.cleanup(now()).length,2);
  store.deleted(first);store.deleted(second);store.cleanup(now()+1);assert.equal(store.post(post),null);
  }finally{database.close();}
 });

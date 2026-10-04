@@ -1,6 +1,7 @@
 import { random, digest, cookie, setCookie, requestOrigin, json, fail } from './security.js';
 const sessionName='__Host-ishare-session', oauthName='__Host-ishare-oauth';
-export const authReady = env => !!(env.GITHUB_CLIENT_ID&&env.GITHUB_CLIENT_SECRET);
+const credentials=env=>({id:String(env.GITHUB_CLIENT_ID||'').trim(),secret:String(env.GITHUB_CLIENT_SECRET||'').trim()});
+export const authReady = env => !!(credentials(env).id&&credentials(env).secret);
 export async function readSession(request,store,now) {
   const token=cookie(request,sessionName);if(!/^[\w-]{43}$/.test(token))return null;
   return store.session(await digest(token),now);
@@ -15,17 +16,23 @@ export function requireCsrf(request,session) {
   if(!session)fail('login_required',401);
   if(request.headers.get('Origin')!==requestOrigin(request)||request.headers.get('X-CSRF-Token')!==session.csrf)fail('invalid_csrf',403);
 }
-async function github(url,options={},request=fetch) {
-  let response;try{response=await request(url,{...options,redirect:'error',signal:AbortSignal.timeout(15000)});}catch{fail('login_unavailable',503);}
-  if(!response.ok)fail('login_unavailable',503);
-  const result=await response.json().catch(()=>null);if(!result)fail('login_unavailable',503);return result;
+async function github(url,options={},request=fetch,stage='exchange') {
+  const unavailable=stage==='identity'?'github_identity_unavailable':'github_exchange_unavailable';
+  let response;try{response=await request(url,{...options,headers:{'User-Agent':'ishare',...options.headers},redirect:'manual',signal:AbortSignal.timeout(15000)});}catch{fail(stage==='identity'?'github_identity_unavailable':'github_exchange_network',503);}
+  const result=await response.json().catch(()=>null);
+  // Return only known error codes, never upstream descriptions, codes or tokens.
+  const errors={incorrect_client_credentials:'github_credentials_invalid',redirect_uri_mismatch:'github_callback_mismatch',bad_verification_code:'github_code_expired',incorrect_code_verifier:'github_pkce_failed',unverified_user_email:'github_email_unverified'};
+  if(Object.hasOwn(errors,result?.error||''))fail(errors[result.error],result.error==='bad_verification_code'?400:503);
+  if(stage==='exchange'&&response.status>=300&&response.status<400)fail('github_exchange_redirected',503);
+  if(stage==='exchange'&&!response.ok)fail(response.status===404?'github_exchange_not_found':response.status===403?'github_exchange_denied':response.status===429?'github_rate_limited':'github_exchange_rejected',503);
+  if(!response.ok||!result||result.error)fail(unavailable,503);return result;
 }
 export async function authorize(request,env,store,now) {
   if(!authReady(env))fail('login_unavailable',503);requireSite(request);
   const state=random(),verifier=random();
   await store.beginAuth(await digest(state),verifier,now);
   const address=new URL('https://github.com/login/oauth/authorize');
-  for(const [key,value]of Object.entries({client_id:env.GITHUB_CLIENT_ID,redirect_uri:requestOrigin(request)+'/auth/callback',state,code_challenge:await digest(verifier),code_challenge_method:'S256'}))address.searchParams.set(key,value);
+  for(const [key,value]of Object.entries({client_id:credentials(env).id,redirect_uri:requestOrigin(request)+'/auth/callback',state,code_challenge:await digest(verifier),code_challenge_method:'S256'}))address.searchParams.set(key,value);
   return new Response(null,{status:303,headers:{Location:address.href,'Cache-Control':'no-store','Set-Cookie':setCookie(oauthName,state,600),'Referrer-Policy':'no-referrer'}});
 }
 export async function callback(request,env,store,now,requestGithub=fetch) {
@@ -34,9 +41,10 @@ export async function callback(request,env,store,now,requestGithub=fetch) {
   const verifier=await store.consumeAuth(await digest(state),now);
   if(!verifier)fail('expired_oauth_state',403);
   const code=url.searchParams.get('code');if(!code||code.length>1024)fail('login_cancelled',400);
-  const data=await github('https://github.com/login/oauth/access_token',{method:'POST',headers:{Accept:'application/json','Content-Type':'application/json'},body:JSON.stringify({client_id:env.GITHUB_CLIENT_ID,client_secret:env.GITHUB_CLIENT_SECRET,redirect_uri:requestOrigin(request)+'/auth/callback',code,code_verifier:verifier})},requestGithub);
-  if(typeof data.access_token!=='string'||data.token_type?.toLowerCase()!=='bearer')fail('login_unavailable',503);
-  const user=await github('https://api.github.com/user',{headers:{Authorization:'Bearer '+data.access_token,Accept:'application/vnd.github+json','User-Agent':'ishare','X-GitHub-Api-Version':'2022-11-28'}},requestGithub);
+  const client=credentials(env);
+  const data=await github('https://github.com/login/oauth/access_token',{method:'POST',headers:{Accept:'application/json','Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:client.id,client_secret:client.secret,redirect_uri:requestOrigin(request)+'/auth/callback',code,code_verifier:verifier}).toString()},requestGithub);
+  if(typeof data.access_token!=='string'||data.token_type?.toLowerCase()!=='bearer')fail('github_exchange_unavailable',503);
+  const user=await github('https://api.github.com/user',{headers:{Authorization:'Bearer '+data.access_token,Accept:'application/vnd.github+json','User-Agent':'ishare','X-GitHub-Api-Version':'2022-11-28'}},requestGithub,'identity');
   if(!Number.isSafeInteger(user.id)||user.id<1||typeof user.login!=='string'||!/^[a-z\d-]{1,39}$/i.test(user.login))fail('invalid_identity',503);
   const identity={id:String(user.id),login:user.login,name:typeof user.name==='string'?user.name.slice(0,100):user.login};
   const token=random();await store.makeSession(await digest(token),identity,random(),now);

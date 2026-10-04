@@ -25,3 +25,18 @@ test('social composer uploads multiple attachments, creates one post and exports
  await page.locator('#library input[type=checkbox]').check();await page.waitForFunction(()=>!document.querySelector('#library input[type=checkbox]').disabled);assert.equal(visible,true);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);await context.close();
  }finally{await browser.close();}
 });
+
+test('signed-out publishers see a prominent login gate, disabled fields and a localized callback error',async()=>{
+ const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
+ try{
+  const context=await browser.newContext({viewport:{width:390,height:844}}),page=await context.newPage();
+  await context.route('**/*',async route=>{const url=new URL(route.request().url());assert.equal(url.origin,'https://ishare.js.gripe');
+   if(url.pathname==='/api'){assert.equal(route.request().headers()['x-service-action'],'session');return route.fulfill({contentType:'application/json',body:JSON.stringify({user:null,canPublish:false,loginAvailable:true,imagesAvailable:true,videosAvailable:true})});}
+   const path=url.pathname.endsWith('/')?url.pathname.slice(1)+'index.html':url.pathname.slice(1),types={'.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.webp':'image/webp','.png':'image/png'};return route.fulfill({contentType:types[extname(path)]||'text/html',body:await readFile('dist/'+path)});
+  });
+  await page.goto('https://ishare.js.gripe/mine/#login-error=github_credentials_invalid');await page.locator('#publisher-login').waitFor({state:'visible'});
+  assert.equal(await page.locator('a[href="/auth"]').count(),1);assert.equal(await page.locator('#publisher-gate').isVisible(),true);assert.equal(await page.locator('#publish-form [name=title]').isDisabled(),true);assert.match(await page.locator('#publish-form').getAttribute('class'),/publisher-locked/);
+  assert.ok(Number(await page.locator('#publish-form fieldset').evaluate(node=>getComputedStyle(node).opacity))<1);assert.match(await page.locator('#login-error').textContent(),/GitHub/);assert.equal(new URL(page.url()).hash,'');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await context.close();
+ }finally{await browser.close();}
+});
