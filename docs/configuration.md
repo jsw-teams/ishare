@@ -21,16 +21,16 @@
 
 如果克隆后提示 `root directory not found`，先确认部署仓库为 `jsw-teams/web`，再把旧的 `/share.js.gripe` 根目录改为 `/ishare.js.gripe`。公开源码仓库 `jsw-teams/ishare` 的项目位于仓库根目录，独立部署该分发源码时根目录应为 `/`。修改站点域名或 Wrangler 配置不会自动更新控制台里的 Git 构建根目录。
 
-## 运行时 Secret
+## 运行时变量与 Secret
 
-在 **ishare Worker → Settings → Variables and Secrets** 中添加下列值，类型均选 **Secret**。已有同名条目请直接编辑。
+在 **ishare Worker → Settings → Variables and Secrets** 中添加下列值。`STREAM_ACCOUNT_ID` 可选 **Variable**；凭据选 **Secret**。已有同名条目请直接编辑，已有账户 ID Secret 也可继续使用。
 
-| 名称 | 填写内容 |
-| --- | --- |
-| `STREAM_ACCOUNT_ID` | Images 与 Stream 共用的资源 Cloudflare 账户 ID |
-| `MEDIA_API_TOKEN` | 同时授权 Images 和 Stream 资源账户的 API Token（Images Edit、Stream Edit） |
-| `GITHUB_CLIENT_ID` | ishare 登录应用的 GitHub OAuth Client ID |
-| `GITHUB_CLIENT_SECRET` | 同一登录应用的 Client Secret |
+| 名称 | 类型 | 填写内容 |
+| --- | --- | --- |
+| `STREAM_ACCOUNT_ID` | Variable（也支持 Secret） | Images 与 Stream 共用的资源 Cloudflare 账户 ID |
+| `MEDIA_API_TOKEN` | Secret | 同时授权 Images 和 Stream 资源账户的 API Token（Images Edit、Stream Edit） |
+| `GITHUB_CLIENT_ID` | Secret | ishare 登录应用的 GitHub OAuth Client ID |
+| `GITHUB_CLIENT_SECRET` | Secret | 同一登录应用的 Client Secret |
 
 Images 与 Stream 使用同一个资源账户，此账户可以与 Worker 所在账户不同。只需一份账户 ID 和一个 `MEDIA_API_TOKEN`：在个人 API Tokens 中选择 Images 写入／Edit、Stream 写入／Edit 权限，并将 Account Resources 限定到该资源账户。通过 API Token 接入，不添加 Images/Stream Worker binding。Secret 不放入源码、`config.yml`、构建变量或聊天中，见 [Cloudflare Token 配置](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/)。
 
@@ -95,7 +95,7 @@ EdgePress 自动生成 CSP 响应头与 HTML 策略，适配静态托管。启�
 
 管理员登录后，在管理后台的平台配额栏目点击“检查配置”，可以检查资源 API 是否可读取。读取成功不等于写入权限正确；Token 仍需 Images 与 Stream 的写入权限。检查不会上传测试文件，也不会返回账户 ID、Token 或源站地址。配置项已存在时编辑原条目，避免同名变量／Secret 冲突；账户 ID 不要误填播放器 customer code。
 
-视频直传使用 `POST /stream?direct_user=true` 和 TUS 请求头，签名标记是无值的 `requiresignedurls`。图片使用 Images V2 返回的 `id`、`uploadURL`，发布时用详情的 `meta.ishare` 核验。直传地址只用于当前上传，公开分享继续代理到本站的不透明媒体路径。
+视频直传按 [Stream TUS REST API](https://developers.cloudflare.com/api/resources/stream/methods/create/) 使用 `POST /stream?direct_user=true` 和 TUS 请求头，签名标记是无值的 `requiresignedurls`。图片使用 Images V2 返回的 `id`、`uploadURL`，发布时用详情的 `meta.ishare` 核验。视频 ID 读取响应头 `stream-media-id`，直传地址读取 `Location`，当前返回的上传源是 `https://upload.cloudflarestream.com`，共享地址校验与 CSP 使用该源。直传地址只用于当前上传，公开分享继续代理到本站的不透明媒体路径。
 
 上传以中间弹窗显示真实字节进度；叉号或 Escape 会取消并移除本次新附件。失败也自动撤销，不保留重试记录或要求手动对账。源站分配结果不确定时，按 `creator` 与唯一应用 ID 查找并删除该次资源；确认源站清理后释放存储额度。正常已发表帖子和被复用附件不受失败撤销影响。视频封面由 Stream 服务端生成，首次通过 `/v/应用ID/thumbnail` 获取后保存并复用，不在浏览器截图。删除视频时一并删除封面。图片和视频发表为同一条帖子，视频在前、图片在后。浏览器无法读取视频时长时，按剩余配额预留有界时长，发表确认后以 Stream 的实际时长替换预留。
 

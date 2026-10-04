@@ -2,8 +2,8 @@ import { fail, ServiceError } from './security.js';
 import {uploadAddress} from '../../static/ishare/upload-address.js';
 const providerId = value => typeof value==='string' && /^[a-zA-Z0-9_-]{1,128}$/.test(value) ? value : fail('invalid_upstream',502);
 function grant(kind,identifier,destination){
- const uid=providerId(identifier);let url;
- try{url=uploadAddress(destination,kind);}catch{const error=new ServiceError('invalid_upstream',502);error.providerId=uid;error.stage='upload_destination';throw error;}
+ let uid,url;try{uid=providerId(identifier);}catch(error){error.stage='upload_identifier';error.reason=identifier?'invalid_id':'missing_id';console.warn('ishare_upload_rejected',{kind,stage:error.stage,reason:error.reason});throw error;}
+ try{url=uploadAddress(destination,kind);}catch(cause){const error=new ServiceError('invalid_upstream',502);error.providerId=uid;error.stage='upload_destination';error.reason=cause.reason;console.warn('ishare_upload_rejected',{kind,stage:error.stage,reason:error.reason});throw error;}
  return {providerId:uid,uploadUrl:url.href,protocol:kind==='image'?'post':'tus'};
 }
 

@@ -16,7 +16,7 @@ for(const scenario of [{name:'image then video',order:['image','video']},{name:'
   if(method==='POST'&&url.searchParams.get('direct_user')==='true'){
    const metadata=Object.fromEntries(options.headers['Upload-Metadata'].split(',').map(part=>{const [key,value]=part.split(' ');return [key,value?atob(value):''];})),id='video-'+resources.size;
    assert.equal(options.headers['Upload-Creator'],'ishare:42');assert.equal(Number(options.headers['Upload-Length']),video.length);assert.equal(Number(metadata.maxDurationSeconds),scenario.preview?600:1);assert.ok(Object.hasOwn(metadata,'requiresignedurls'));
-   resources.set(id,{id,app:metadata.name,kind:'video',received:false});return new Response(null,{status:201,headers:{Location:'https://upload.videodelivery.net/'+id,'stream-media-id':id}});
+   resources.set(id,{id,app:metadata.name,kind:'video',received:false});return new Response(null,{status:201,headers:{Location:'https://upload.cloudflarestream.com/'+id,'stream-media-id':id}});
   }
   const item=resources.get(url.pathname.split('/').at(-1));assert.ok(item);
   return Response.json({success:true,result:item.kind==='image'?{id:item.id,uploaded:item.received?'2026-10-04':null,draft:!item.received,requireSignedURLs:true,meta:{ishare:item.app}}:{uid:item.id,readyToStream:item.received,requireSignedURLs:true,duration:1,status:{state:item.received?'ready':'inprogress'}}});
@@ -31,7 +31,7 @@ for(const scenario of [{name:'image then video',order:['image','video']},{name:'
   await context.route('**/*',async route=>{
    const req=route.request(),url=new URL(req.url());
    if(url.hostname==='upload.imagedelivery.net'){const item=resources.get(url.pathname.slice(1));assert.equal(req.method(),'POST');assert.match(req.headers()['content-type'],/^multipart/);if(scenario.rejected==='image')return route.fulfill({status:403,contentType:'application/json',body:'{"success":false}'});item.received=true;return route.fulfill({contentType:'application/json',body:'{"success":true}'});}
-   if(url.hostname==='upload.videodelivery.net'){
+   if(url.hostname==='upload.cloudflarestream.com'){
     methods.push(req.method());assert.equal(req.method(),'PATCH');const item=resources.get(url.pathname.slice(1));assert.equal(req.headers()['upload-offset'],'0');assert.equal(req.headers()['tus-resumable'],'1.0.0');assert.deepEqual(req.postDataBuffer(),video);
     if(scenario.rejected==='video')return route.fulfill({status:403,body:''});item.received=true;return route.fulfill({status:204,headers:{'Upload-Offset':String(video.length),'Access-Control-Expose-Headers':'Upload-Offset'},body:''});
    }

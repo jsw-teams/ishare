@@ -15,7 +15,7 @@ test('ownership, processing state, duration and uncertain outcomes keep quotas s
   const {store,database}=repository();try{
     store.reserve(media({kind:'video',duration:120}),limits,now());
     assert.throws(()=>store.publish('a'.repeat(32),'42',20,now()),/invalid_state/);
-    store.attach('a'.repeat(32),'upstream-identifier-123456','https://upload.videodelivery.net/temporary',now());
+    store.attach('a'.repeat(32),'upstream-identifier-123456','https://upload.cloudflarestream.com/temporary',now());
     assert.throws(()=>store.publish('a'.repeat(32),'other',20,now()),/not_found/);
     assert.throws(()=>store.publish('a'.repeat(32),'42',121,now()),/invalid_duration/);
     assert.equal(store.publish('a'.repeat(32),'42',30,now()).duration,30);

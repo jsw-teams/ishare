@@ -148,6 +148,6 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     const code=error instanceof ServiceError?error.message:'service_unavailable';
     if(url.pathname==='/auth/callback'&&!request.headers.get('Accept')?.includes('application/json'))return new Response(null,{status:303,headers:{Location:site+'/mine/#login-error='+encodeURIComponent(code),'Cache-Control':'no-store','Referrer-Policy':'no-referrer','Set-Cookie':'__Host-ishare-oauth=; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=0'}});
     const diagnostics=url.pathname==='/api'&&privateActions.has(request.headers.get('X-Service-Action'));
-    return json({error:code,...(diagnostics&&error.stage?{stage:error.stage}:{}),...(diagnostics&&Number.isInteger(error.upstreamStatus)?{upstreamStatus:error.upstreamStatus}:{})},error instanceof ServiceError?error.status:503);
+    return json({error:code,...(diagnostics&&error.stage?{stage:error.stage}:{}),...(diagnostics&&error.reason?{reason:error.reason}:{}),...(diagnostics&&Number.isInteger(error.upstreamStatus)?{upstreamStatus:error.upstreamStatus}:{})},error instanceof ServiceError?error.status:503);
   }
 }

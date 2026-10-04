@@ -2,7 +2,7 @@
 
 - ishare is the standalone image and video publishing service at https://ishare.js.gripe. It is separate from website hosting and iask.
 - Keep platform entry points under backend/cloudflare. Existing web/connect DNS/WARP code, bindings, routes and storage are outside this project and must not be changed.
-- The operator manages routes. Disable workers.dev and preview URLs. Images and Stream use one resource account separate from the Worker account; account IDs, API tokens and signing keys are Secrets, never browser configuration.
+- The operator manages routes. Disable workers.dev and preview URLs. Images and Stream use one resource account separate from the Worker account; account IDs are runtime Variables or Secrets; API tokens and signing keys are Secrets. Never include resource account IDs or credentials in browser configuration.
 - Browser business calls use /api and validated X-Service-Action / X-Service-Resource headers. Standard /oembed supports the standard discovery protocol; canonical share, embed and media paths contain opaque application IDs.
 - Authenticate publishers using GitHub's numeric user ID. Apply CSRF, ownership, upload reservations and bounded quotas before minting direct upload URLs. Do not imply verified ownership of a source website.
 - Media delivery must proxy private upstream resources without redirects, provider IDs, customer subdomains or signed upstream URLs in public responses. Rewrite every HLS resource reference using authenticated opaque tickets; fail closed on unsupported manifest syntax and untrusted destinations.
@@ -16,7 +16,7 @@
 
 - The operator Worker deploys from jsw-teams/web, root ishare.js.gripe. The public jsw-teams/ishare repository is a source mirror for distribution, not the operator deployment source. Keep Secrets only in Cloudflare.
 
-- Derive business origins from the routed request URL, never forwarded-host headers or required origin variables. Public get/oEmbed metadata supports credential-free CORS; private reads and writes keep same-origin and CSRF checks. One MEDIA_API_TOKEN accesses both separately configured resource accounts.
+- Derive business origins from the routed request URL, never forwarded-host headers or required origin variables. Public get/oEmbed metadata supports credential-free CORS; private reads and writes keep same-origin and CSRF checks. One MEDIA_API_TOKEN accesses the shared Images/Stream resource account.
 - Operator build root is /ishare.js.gripe in jsw-teams/web. This site enables no general media-platform consent services. Other web/EdgePress sites preset only X and YouTube; do not restore broad platform lists.
 
 - Official names are ishare in English and 爱分享/愛分享 in Chinese. Keep names separate by locale. Homepage is an opt-in public post feed; My shares holds the text-first composer, multiple attachments and owned history. Never auto-enroll legacy content in the feed.
@@ -37,3 +37,5 @@
 Expired sessions, OAuth states, counters and minimal accounting/audit rows also use their next retention deadline as a one-time alarm; never replace this with an idle periodic cron.
 
 - Image and video attachments belong to one post, with videos first and images afterwards, stable within each kind. Do not generate covers in the browser. Fetch one fixed server-generated Stream cover and persist its JPEG bytes for reuse; delete the saved cover with its media. If browser metadata is unavailable, reserve a bounded video duration under the account's remaining allowance; Stream enforces that duration and publication replaces the reservation with the actual duration. New TUS grants start at offset zero; use HEAD only to recover interrupted PATCH requests. Cleanup feedback must preserve the failed attachment, phase and friendly reason. Diagnostics may contain known error codes and numeric HTTP statuses, never credentials, upload capabilities or upstream playback addresses.
+
+- Stream TUS creator uploads currently return upload.cloudflarestream.com in Location. Accept that exact HTTPS upload origin in the shared validator and CSP; do not retain the obsolete videodelivery upload origin or broaden to arbitrary customer playback domains. Stream resource account IDs come from STREAM_ACCOUNT_ID, video IDs from stream-media-id, and customer playback addresses from the authenticated REST API. Never hardcode resource account or customer IDs.
