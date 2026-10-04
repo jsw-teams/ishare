@@ -1,6 +1,6 @@
 # ishare
 
-Share images and videos with optional text, a stable share page, raw media links and attributed oEmbed embeds. Publishers sign in with GitHub; viewers need no account. Media is public and shareable.
+Write a story first, then add multiple image or video attachments. Publish complete attributed oEmbed posts or individual Markdown image links. The homepage lists only posts explicitly opted in by their publishers; My shares contains the composer and personal history. Publishers sign in with GitHub; viewers need no account. Media is public and shareable.
 
 [中文说明](docs/zh-cn.md) / [本站配置说明](docs/configuration.md) / [Quota and privacy operations](docs/operations.md)
 
@@ -8,16 +8,18 @@ Share images and videos with optional text, a stable share page, raw media links
 
 ![ishare homepage illustration with its black bear mascot](content/assets/brand/bear-banner.ed22b23efa24f8a8.webp)
 
+![Text-first multi-attachment composer, local demonstration data](docs/images/my-shares-desktop.png)
+
 ![Publishing and user administration, shown with local demonstration data](docs/images/admin-preview.png)
 
 ```mermaid
 flowchart LR
   A[Publisher] -->|GitHub sign-in and fixed /api| W[ishare Worker]
-  W -->|Bearer API tokens| I[Separate Images account]
-  W -->|Bearer API tokens| S[Separate Stream account]
+  W -->|Bearer API tokens| I[Resource account: Images]
+  W -->|Bearer API tokens| S[Resource account: Stream]
   A -->|One-time upload URL| I
   A -->|Resumable upload| S
-  V[Viewer or consented website embed] -->|share.js.gripe| W
+  V[Viewer or consented website embed] -->|ishare.js.gripe| W
   I -->|Private image bytes| W
   S -->|Private playlists and segments| W
   W --> D[SQLite Durable Object]
@@ -25,27 +27,27 @@ flowchart LR
 
 ## Deployment
 
-The JS.GRIPE operator deploys the existing Worker from the private `jsw-teams/web` repository, root `/share.js.gripe`. This public repository distributes complete ishare application source; EdgePress is a pinned dependency, without a copied framework source tree. See the [configuration guide](docs/configuration.md) for Git build settings and runtime Secrets.
+The JS.GRIPE operator deploys the existing Worker from the private `jsw-teams/web` repository, root `/ishare.js.gripe`. This public repository distributes complete ishare application source; EdgePress is a pinned dependency, without a copied framework source tree. See the [configuration guide](docs/configuration.md) for Git build settings and runtime Secrets.
 
-Use Node 24, run `npm ci`, `npm run build`, `npm test`, then `npm run deploy`. The Cloudflare backend lives in `backend/cloudflare`. One Worker and one SQLite Durable Object hold application metadata; Images and Stream are accessed using API tokens, not resource bindings. They can belong to separate accounts.
+Use Node 24, run `npm ci`, `npm run build`, `npm test`, then `npm run deploy`. The Cloudflare backend lives in `backend/cloudflare`. One Worker and one SQLite Durable Object hold application metadata; Images and Stream are accessed using API tokens, not resource bindings. Images and Stream use one resource account for this deployment.
 
-Configure Worker Secrets: `IMAGES_ACCOUNT_ID`, `STREAM_ACCOUNT_ID`, one shared `MEDIA_API_TOKEN` with Images Edit and Stream Edit across the actual resource accounts, and `STREAM_CUSTOMER_CODE`. Only configure the media type you intend to enable. No image variants or image signing key setup is needed: image delivery proxies the authenticated Images blob endpoint. Stream uses a cached token API by default; optional `STREAM_SIGNING_KEY_ID` and base64 JWK `STREAM_SIGNING_KEY` avoid playback token API requests.
+Configure `STREAM_ACCOUNT_ID` for both Images and Stream, and one `MEDIA_API_TOKEN` with Images Edit and Stream Edit on that resource account. Existing `IMAGES_ACCOUNT_ID`, or the account ID previously stored in `STREAM_CUSTOMER_CODE`, remains compatible when the canonical Secret is absent; no duplicate account Secret or customer code is required. Stream playback addresses are discovered using its authenticated API and cached on the server. Image delivery proxies authenticated original bytes. Optional `STREAM_SIGNING_KEY_ID` and base64 JWK `STREAM_SIGNING_KEY` avoid playback-token API calls, while playback-address discovery remains cached.
 
-GitHub login needs `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and callback `https://share.js.gripe/auth/callback`. Do not reuse or change another service's callback silently. The backend derives its origin from the routed request and does not need origin variables. Public metadata allows cross-site reading; login and writes retain same-origin and CSRF checks. Configure the static canonical URL in `config.yml` and your **verified numeric** `OWNER_GITHUB_ID`; this deployment uses `228026986` for the current operator. Forks must replace it. Optional `ADMIN_IDS` delegates moderation without making those accounts unlimited. Empty `PUBLISHER_IDS` allows authenticated users within their quotas.
+GitHub login needs `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and callback `https://ishare.js.gripe/auth/callback`. Do not reuse or change another service's callback silently. The backend derives its origin from the routed request and does not need origin variables. Public metadata allows cross-site reading; login and writes retain same-origin and CSRF checks. Configure the static canonical URL in `config.yml` and your **verified numeric** `OWNER_GITHUB_ID`; this deployment uses `228026986` for the current operator. Forks must replace it. Optional `ADMIN_IDS` delegates moderation without making those accounts unlimited. Empty `PUBLISHER_IDS` allows authenticated users within their quotas.
 
-`workers.dev` and preview URLs are disabled. The operator configures `share.js.gripe` routes; deployment does not create routes or replace website Workers. Hosted Images/Stream resources require the corresponding Cloudflare plans; the deploy button does not supply free media storage or credentials.
+`workers.dev` and preview URLs are disabled. The operator configures `ishare.js.gripe` routes; deployment does not create routes or replace website Workers. Hosted Images/Stream resources require the corresponding Cloudflare plans; the deploy button does not supply free media storage or credentials.
 
 ## Quotas and administration
 
-The ordinary-user defaults are 1,000 images stored, 60 video minutes stored, 50 uploads per UTC day, 10 minutes per video, and 1 GiB per video. Image delivery counts and delivered video duration are operator monitoring metrics, with no ordinary-user delivery caps. These are application policy defaults, not a Cloudflare free tier. The operator is exempt from all application quotas, including global application budgets. Provider upload/encoding limits still apply: Images accepts at most 10 MB and Stream files must be below 30 GB.
+The ordinary-user defaults are 1,000 images stored, 60 video minutes stored, 50 uploads per UTC day, 10 minutes per video. Image delivery counts and delivered video duration are operator monitoring metrics, with no ordinary-user delivery caps. These are application policy defaults, not a Cloudflare free tier. The operator is exempt from all application quotas, including global application budgets. Provider upload/encoding limits still apply: Images accepts at most 10 MB and Stream files must be below 30 GB.
 
-After operator login, **User management** appears on the homepage. Select a user to increase individual limits, leave limits blank for unlimited, suspend publishing or public sharing for documented abuse, restore defaults, inspect media, or remove an individual item. All quota and permission changes require a user-visible reason. Ordinary reductions and suspension receive seven days of notice; explicit urgent abuse restrictions apply immediately. Existing content is not deleted by quota changes. An explicit sharing suspension stops new public delivery without deleting stored media; it follows the same reason, notice and appeal policy. Export, deletion and privacy requests remain available while publishing is suspended.
+After operator login, **User management** appears in **My shares**. Select a user to increase individual limits, leave limits blank for unlimited, suspend publishing or public sharing for documented abuse, restore defaults, inspect media, or remove an individual item. All quota and permission changes require a user-visible reason. Ordinary reductions and suspension receive seven days of notice; explicit urgent abuse restrictions apply immediately. Existing content is not deleted by quota changes. An explicit sharing suspension stops new public delivery without deleting stored media; it follows the same reason, notice and appeal policy. Export, deletion and privacy requests remain available while publishing is suspended.
 
-Global non-operator storage and allocation budgets are configured with `MAX_IMAGES`, `MAX_VIDEO_SECONDS`, and `MAX_UPLOADS_PER_DAY`; per-user defaults may be configured using `QUOTA_` followed by the documented field name. A user-specific increase remains subject to the shared non-operator budget. See [operations](docs/operations.md) for exact accounting, caching and privacy procedures.
+The verified GitHub operator edits **Platform quotas** online: new-user defaults and shared non-operator storage/allocation budgets are saved in SQLite, without quota environment variables. Existing users keep their effective and scheduled quotas when new-user defaults change. Shared-capacity reductions receive seven days of notice unless urgent abuse handling is explicitly selected. User-specific increases remain subject to shared capacity; per-user changes continue through User management. See [operations](docs/operations.md) for accounting, caching and privacy procedures.
 
 ## Website integration
 
-Register a flat consent service with `provider: oembed`, `backendUrl: https://share.js.gripe`, a localized name/purpose, data/recipient/retention disclosures and `privacyUrl: https://share.js.gripe/privacy.html`. On an EdgePress page:
+Register a flat consent service with `provider: oembed`, `backendUrl: https://ishare.js.gripe`, a localized name/purpose, data/recipient/retention disclosures and `privacyUrl: https://ishare.js.gripe/privacy.html`. On an EdgePress page:
 
 ```yaml
 blocks:
@@ -53,7 +55,7 @@ blocks:
     cells:
       - - type: oembed
           integration: ishare
-          url: https://share.js.gripe/s/REPLACE_WITH_REAL_SHARE_ID
+          url: https://ishare.js.gripe/s/REPLACE_WITH_REAL_SHARE_ID
           title: Shared image or video
 ```
 
@@ -67,6 +69,6 @@ Hashed CSS, JavaScript and bundled HLS dependencies cache for one year. Public m
 
 ## Source and deployment
 
-The canonical application directory is `web/share.js.gripe`. The `jsw-teams/ishare` repository receives the complete deployable source from that directory, including EdgePress pages and `/backend/cloudflare`. The operator Worker builds from the private `jsw-teams/web` repository with root directory `share.js.gripe`, running `npm ci` and `npm run deploy`. The public ishare repository distributes the same complete source; it is not the operator Worker deployment source. No cross-repository frontend download or public release artifact is required. Configure actual credentials only as Worker Secrets.
+The canonical application directory is `web/ishare.js.gripe`. The `jsw-teams/ishare` repository receives the complete deployable source from that directory, including EdgePress pages and `/backend/cloudflare`. The operator Worker builds from the private `jsw-teams/web` repository with root directory `ishare.js.gripe`, running `npm ci` and `npm run deploy`. The public ishare repository distributes the same complete source; it is not the operator Worker deployment source. No cross-repository frontend download or public release artifact is required. Configure actual credentials only as Worker Secrets.
 
 Configure the operator deployment using the [Chinese configuration guide](docs/configuration.md). EdgePress is a pinned dependency; its framework source is not copied into this project.

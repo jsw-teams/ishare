@@ -1,18 +1,20 @@
-# ishare 中文说明
+# 爱分享 中文说明
 
-ishare 用于公开分享图片、视频和配文。发布者使用 GitHub 登录；访客无需登录即可访问分享页或查看嵌入。内容保留作者与来源署名，不提供付费查看或模糊预览。
+爱分享用于公开分享图文和视频。上方编辑文字，下方添加最多 50 个图片或视频附件。“我的分享”包含发布与历史；首页仅展示发布者主动勾选愿意展示的帖子。可分享完整帖的 oEmbed 嵌入代码，也可复制逐张图片的 Markdown 链接。发布者使用 GitHub 登录；访客无需登录即可访问分享页或查看嵌入。内容保留作者与来源署名，不提供付费查看或模糊预览。
 
 ![ishare 黑熊吉祥物横幅](../content/assets/brand/bear-banner.ed22b23efa24f8a8.webp)
+
+![先写文字、再添加多个附件的发布界面，使用演示资料](images/my-shares-desktop.png)
 
 ![用户管理界面，使用本地演示资料截图](images/admin-preview.png)
 
 ## 部署与资源接入
 
-使用 Node 24，执行 `npm ci`、`npm run build`、`npm test`、`npm run deploy`。后端代码位于 `/backend/cloudflare`。Worker 保存配置并通过一个 SQLite Durable Object 保存业务资料；Images 和 Stream 通过 **API Token** 接入，可以分别使用不同 Cloudflare 账户。没有 Images/Stream 的 Worker binding。
+使用 Node 24，执行 `npm ci`、`npm run build`、`npm test`、`npm run deploy`。后端代码位于 `/backend/cloudflare`。Worker 保存配置并通过一个 SQLite Durable Object 保存业务资料；Images 和 Stream 通过 **API Token** 接入，共用一个资源 Cloudflare 账户。没有 Images/Stream 的 Worker binding。
 
-在 Worker 的 Secrets 中配置 `IMAGES_ACCOUNT_ID`、`STREAM_ACCOUNT_ID`、`STREAM_CUSTOMER_CODE`，以及共用的 `MEDIA_API_TOKEN`（对实际资源账户授权 Images Edit 和 Stream Edit）。只配置图片或视频其中一种也可使用。图片代理使用需要 Bearer Token 的原图下载接口，不要求创建专用变体。视频默认在服务端缓存 Stream 播放令牌；高访问量时可额外配置 Stream 签名密钥，避免播放令牌 API 请求。
+在 Worker 的 Secrets 中配置 一份 `STREAM_ACCOUNT_ID`，以及共用的 `MEDIA_API_TOKEN`（对实际资源账户授权 Images Edit 和 Stream Edit）。已有 `IMAGES_ACCOUNT_ID` 或旧 `STREAM_CUSTOMER_CODE` 中的账户 ID 可兼容读取，无需重复填写；播放器地址由 Stream API 获取。图片代理使用需要 Bearer Token 的原图下载接口，不要求创建专用变体。视频默认在服务端缓存 Stream 播放令牌；高访问量时可额外配置 Stream 签名密钥，避免播放令牌 API 请求。
 
-GitHub 登录需要 `GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`，回调地址为 `https://share.js.gripe/auth/callback`。其他服务的 GitHub App 回调不应被自动修改。业务域名从请求自动取得，无需额外域名变量；静态页面网址在 `config.yml` 配置，路由由你自行配置；`workers.dev` 与预览域名关闭。托管 Images/Stream 需要相应的平台计划，一键部署不会提供免费的媒体额度或自动继承其他 Worker 的 Secrets。
+GitHub 登录需要 `GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`，回调地址为 `https://ishare.js.gripe/auth/callback`。其他服务的 GitHub App 回调不应被自动修改。业务域名从请求自动取得，无需额外域名变量；静态页面网址在 `config.yml` 配置，路由由你自行配置；`workers.dev` 与预览域名关闭。托管 Images/Stream 需要相应的平台计划，一键部署不会提供免费的媒体额度或自动继承其他 Worker 的 Secrets。
 
 ## 配额与后台管理
 
@@ -23,13 +25,13 @@ GitHub 登录需要 `GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`，回调地址�
 | 视频存储 | 60 分钟 |
 | 视频传递 | 不设常规额度，后台统计时长 |
 | 上传频次 | 每日 50 次 |
-| 单个视频 | 最长 10 分钟，最大 1 GiB |
+| 单个视频 | 初始最长 10 分钟；文件仅受平台硬限制 |
 
 后台按 UTC 日历月统计传递用量，不因普通浏览热度停止分享。视频上传先预留预计时长，发布时改用 Stream 确认的实际时长。传递时长按真实请求的 HLS 分片统计，预加载、重复请求也会记入用量。文件体积仅用于上传检查，不混作视频计费储存额度。
 
-运营者 GitHub 数字 ID 配置为 `OWNER_GITHUB_ID=228026986`，免除所有应用配额及共享预算限制。不能仅根据用户名认定身份。Cloudflare 的硬性文件与编码限制仍然存在，图片最大 10 MB、视频需小于 30 GB。普通账户的默认共享预算为 10,000 张图片、600 分钟视频与每日 500 次上传。其他用户提高额度时仍受共享预算控制；请按容量调整 `MAX_IMAGES`、`MAX_VIDEO_SECONDS`、`MAX_UPLOADS_PER_DAY`。
+运营者 GitHub 数字 ID 配置为 `OWNER_GITHUB_ID=228026986`，免除所有应用配额及共享预算限制。不能仅根据用户名认定身份。Cloudflare 的硬性文件与编码限制仍然存在，图片最大 10 MB、视频需小于 30 GB。普通账户的默认共享预算为 10,000 张图片、600 分钟视频与每日 500 次上传。其他用户提高额度时仍受共享预算控制；在“我的分享 → 平台配额”通过 GitHub 运营者账户在线调整，不使用配额系统变量。新用户默认额度变更保留已有用户额度；共享容量普通降低提前七天通知。
 
-登录后，运营者会看到“用户管理”。可单独提高图片数量、视频储存分钟数、上传频次和单文件规格；图片传递次数及视频传递时长仅用于后台监控，不设常规访客额度。留空表示不限，零表示停止对应的新使用。对明确滥用可暂停新上传、发布及公开分享，保留资料供本人导出、删除和申诉；也可恢复默认额度、查看媒体及删除具体内容。额外管理员用 `ADMIN_IDS` 的数字 ID 配置，他们不会因此自动获得无限额度。
+登录后，运营者会看到“用户管理”。可单独提高图片数量、视频储存分钟数、上传频次和单个视频时长；图片传递次数及视频传递时长仅用于后台监控，不设常规访客额度。留空表示不限，零表示停止对应的新使用。对明确滥用可暂停新上传、发布及公开分享，保留资料供本人导出、删除和申诉；也可恢复默认额度、查看媒体及删除具体内容。额外管理员用 `ADMIN_IDS` 的数字 ID 配置，他们不会因此自动获得无限额度。
 
 降低配额或普通暂停需要填写对应用户可见的原因，并提前七天在站内通知。已有内容不自动删除；超过新额度时停止继续分配。紧急滥用可明确选择立即暂停，仍保留人工申诉、数据导出、本人删除和隐私请求入口。七天是本站运营规则，**不是 GDPR 规定的配额调整期限**。
 
@@ -49,17 +51,17 @@ blocks:
     cells:
       - - type: oembed
           integration: ishare
-          url: https://share.js.gripe/s/替换为真实分享ID
+          url: https://ishare.js.gripe/s/替换为真实分享ID
           title: 图片或视频说明
 ```
 
-需要访客授权该服务并点击“加载媒体”才发起请求。业务接口固定为 `/api`，操作名和资源 URL 在 HTTP 请求头传递。其他 oEmbed 客户端可使用标准 `/oembed` 发现接口。浏览器播放与查看只看到 `share.js.gripe` 的代理地址，HLS 内部资源也会重写；上传者会看到有时效的一次性上传地址，该地址不是账户凭据或播放地址。
+需要访客授权该服务并点击“加载媒体”才发起请求。业务接口固定为 `/api`，操作名和资源 URL 在 HTTP 请求头传递。其他 oEmbed 客户端可使用标准 `/oembed` 发现接口。浏览器播放与查看只看到 `ishare.js.gripe` 的代理地址，HLS 内部资源也会重写；上传者会看到有时效的一次性上传地址，该地址不是账户凭据或播放地址。
 
 ## 前端与部署来源
 
-源码在 `web/share.js.gripe` 维护，完整部署目录直接同步到 `jsw-teams/ishare` 仓库。前端采用 EdgePress，后端位于 `/backend/cloudflare`。实际 Worker 从私有 `jsw-teams/web` 仓库构建，根目录填写 `share.js.gripe`，运行 `npm ci` 与 `npm run deploy`。公开 ishare 仓库仅分发完整源码，不作为本站 Worker 的部署源；不再跨仓库下载页面，也不发布公开前端构建资源。敏感环境只填写 Worker Secrets。
+源码在 `web/ishare.js.gripe` 维护，完整部署目录直接同步到 `jsw-teams/ishare` 仓库。前端采用 EdgePress，后端位于 `/backend/cloudflare`。实际 Worker 从私有 `jsw-teams/web` 仓库构建，根目录填写 `ishare.js.gripe`，运行 `npm ci` 与 `npm run deploy`。公开 ishare 仓库仅分发完整源码，不作为本站 Worker 的部署源；不再跨仓库下载页面，也不发布公开前端构建资源。敏感环境只填写 Worker Secrets。
 
 逐项配置请参考 [configuration.md](configuration.md)。EdgePress 通过固定版本依赖引用，不在公开 ishare 仓库重复发布生成器源码。
 
 
-本站部署从 `jsw-teams/web` 的 `share.js.gripe` 目录进行，公开 ishare 库分发应用源码。页面采用固定版本的 EdgePress 依赖，不重复公开框架代码。参见 [具体配置步骤](configuration.md)。
+本站部署从 `jsw-teams/web` 的 `ishare.js.gripe` 目录进行，公开 ishare 库分发应用源码。页面采用固定版本的 EdgePress 依赖，不重复公开框架代码。参见 [具体配置步骤](configuration.md)。

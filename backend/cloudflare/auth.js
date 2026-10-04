@@ -40,7 +40,7 @@ export async function callback(request,env,store,now,requestGithub=fetch) {
   if(!Number.isSafeInteger(user.id)||user.id<1||typeof user.login!=='string'||!/^[a-z\d-]{1,39}$/i.test(user.login))fail('invalid_identity',503);
   const identity={id:String(user.id),login:user.login,name:typeof user.name==='string'?user.name.slice(0,100):user.login};
   const token=random();await store.makeSession(await digest(token),identity,random(),now);
-  const response=new Response(null,{status:303,headers:{Location:requestOrigin(request)+'/', 'Cache-Control':'no-store','Referrer-Policy':'no-referrer'}});
+  const response=new Response(null,{status:303,headers:{Location:requestOrigin(request)+'/mine/', 'Cache-Control':'no-store','Referrer-Policy':'no-referrer'}});
   response.headers.append('Set-Cookie',setCookie(oauthName,'',0));response.headers.append('Set-Cookie',setCookie(sessionName,token,86400));return response;
 }
 export async function logout(request,store) {const token=cookie(request,sessionName);if(token)await store.logout(await digest(token));return json({ok:true},200,{'Set-Cookie':setCookie(sessionName,'',0)});}

@@ -1,7 +1,7 @@
 site:
   title: ishare
   description: 分享图片、视频与配文，保留作者及来源。
-  url: https://share.js.gripe
+  url: https://ishare.js.gripe
   language: zh-CN
   head:
     titleSuffix: ishare
@@ -14,19 +14,19 @@ site:
         zh-CN: 首页
         en: Home
         zh-TW: 首頁
-    - key: guide
-      url: /guide/
+    - key: mine
+      url: /mine/
       labels:
-        zh-CN: 如何分享
-        en: How to share
-        zh-TW: 如何分享
+        zh-CN: 我的分享
+        en: My shares
+        zh-TW: 我的分享
+  footerNavigation:
     - key: main
       url: https://js.gripe
       labels:
         zh-CN: 主站
         en: Main site
         zh-TW: 主站
-  footerNavigation:
     - key: guide
       url: /guide/
       labels:

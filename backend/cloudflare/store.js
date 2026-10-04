@@ -1,5 +1,5 @@
 import { random, fail } from './security.js';
-import { policy, exceeds } from './quotas.js';
+import { policy, exceeds, defaults } from './quotas.js';
 const monthDue=now=>{const date=new Date(now*1000),day=date.getUTCDate();date.setUTCDate(1);date.setUTCMonth(date.getUTCMonth()+1);const end=new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()+1,0)).getUTCDate();date.setUTCDate(Math.min(day,end));return Math.floor(date.getTime()/1000);};
 
 export class Repository {
@@ -14,6 +14,9 @@ export class Repository {
     );
     CREATE INDEX IF NOT EXISTS media_owner ON media(owner,created);
     CREATE INDEX IF NOT EXISTS media_state ON media(state,expires);
+    CREATE TABLE IF NOT EXISTS posts (id TEXT PRIMARY KEY, owner TEXT NOT NULL, author TEXT NOT NULL, title TEXT NOT NULL, caption TEXT NOT NULL, source_url TEXT NOT NULL, source_name TEXT NOT NULL, listed INTEGER NOT NULL DEFAULT 0, state TEXT NOT NULL, created INTEGER NOT NULL, published INTEGER);
+    CREATE INDEX IF NOT EXISTS posts_feed ON posts(state,listed,created);
+    CREATE TABLE IF NOT EXISTS attachments (post_id TEXT NOT NULL, media_id TEXT NOT NULL UNIQUE, position INTEGER NOT NULL, PRIMARY KEY(post_id,position));
     CREATE TABLE IF NOT EXISTS auth (id TEXT PRIMARY KEY, verifier TEXT NOT NULL, expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, identity TEXT NOT NULL, csrf TEXT NOT NULL, expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS limits (id TEXT PRIMARY KEY, count INTEGER NOT NULL, expires INTEGER NOT NULL);
@@ -24,7 +27,29 @@ export class Repository {
   }
   one(query,...args) { return [...this.sql.exec(query,...args)][0]||null; }
   get(id) { return this.one('SELECT * FROM media WHERE id=?',id); }
-  publicGet(id,ownerId,now){const item=this.get(id);if(!item||item.state!=='published')fail('not_found',404);const row=this.activate(item.owner,now);if(item.owner!==ownerId&&JSON.parse(row?.policy||'{}').sharingBlocked===true)fail('sharing_suspended',403);return item;}
+  quotaSettings(now){let value=JSON.parse(this.one("SELECT value FROM settings WHERE id='quotas'")?.value||'null')||{defaults:defaults(),shared:{images:10000,videoSeconds:36000,daily:500},pending:null,note:''};if(value.pending&&value.pending.effective<=now){value={...value,shared:value.pending.shared,pending:null};this.sql.exec("INSERT INTO settings VALUES ('quotas',?) ON CONFLICT(id) DO UPDATE SET value=excluded.value",JSON.stringify(value));}return value;}
+  setQuotaSettings(change,actor,now){return this.atomic(()=>{
+    const current=this.quotaSettings(now);
+    // Freeze existing effective and scheduled user quotas before changing new-user defaults.
+    for(const row of [...this.sql.exec('SELECT id,policy,pending FROM users')]){const saved=JSON.parse(row.policy),pending=row.pending?JSON.parse(row.pending):null;if(pending)pending.limits={...current.defaults,...pending.limits};this.sql.exec('UPDATE users SET policy=?,pending=? WHERE id=?',JSON.stringify({...current.defaults,...saved}),pending?JSON.stringify(pending):null,row.id);}
+    const reducing=Object.keys(current.shared).some(k=>change.shared[k]!==null&&(current.shared[k]===null||change.shared[k]<current.shared[k]));
+    const next={defaults:change.defaults,shared:reducing&&!change.urgent?current.shared:change.shared,pending:reducing&&!change.urgent?{shared:change.shared,effective:now+604800}:null,note:change.note};
+    this.sql.exec("INSERT INTO settings VALUES ('quotas',?) ON CONFLICT(id) DO UPDATE SET value=excluded.value",JSON.stringify(next));this.sql.exec('INSERT INTO audit(actor,target,changes,created) VALUES (?,?,?,?)',actor,'site',JSON.stringify(next),now);return next;
+  });}
+  post(id){const row=this.one('SELECT * FROM posts WHERE id=?',id);return row?{...row,kind:'post',listed:!!row.listed,media:[...this.sql.exec("SELECT m.* FROM attachments a JOIN media m ON m.id=a.media_id WHERE a.post_id=? AND m.state NOT IN ('deleted','failed') ORDER BY a.position",id)]}:null;}
+  publicShare(id,ownerId,now){const post=this.post(id);if(!post)return this.publicGet(id,ownerId,now);if(post.state!=='published')fail('not_found',404);const row=this.activate(post.owner,now);if(row?.erasing||post.owner!==ownerId&&JSON.parse(row?.policy||'{}').sharingBlocked)fail('sharing_suspended',403);return {...post,media:post.media.filter(item=>item.state==='published')};}
+  createPost(data,ownerId,now){return this.atomic(()=>{
+    const existing=this.post(data.id);if(existing){if(existing.owner!==data.owner||existing.state!=='published'||existing.title!==data.title||existing.caption!==data.caption||existing.source_url!==data.sourceUrl||existing.source_name!==data.sourceName||existing.listed!==data.listed||JSON.stringify(existing.media.map(item=>item.id))!==JSON.stringify(data.mediaIds))fail('post_conflict',409);return existing;}
+    this.assertPublisher(data.owner,ownerId);if(data.mediaIds.length>50||new Set(data.mediaIds).size!==data.mediaIds.length||!data.mediaIds.length&&!data.caption.trim())fail('invalid_post');
+    for(const key of data.mediaIds){const media=this.get(key);if(!media||media.owner!==data.owner||media.state!=='published'||this.one('SELECT post_id FROM attachments WHERE media_id=?',key))fail('invalid_attachment',409);}
+    this.sql.exec("INSERT INTO posts VALUES (?,?,?,?,?,?,?,?,'published',?,?)",data.id,data.owner,JSON.stringify(data.author),data.title,data.caption,data.sourceUrl,data.sourceName,Number(data.listed),now,now);
+    data.mediaIds.forEach((key,index)=>this.sql.exec('INSERT INTO attachments VALUES (?,?,?)',data.id,key,index));return this.post(data.id);
+  });}
+  visibility(id,owner,listed,ownerId){return this.atomic(()=>{this.assertPublisher(owner,ownerId);const post=this.post(id);if(!post||post.owner!==owner||post.state!=='published')fail('not_found',404);this.sql.exec('UPDATE posts SET listed=? WHERE id=?',Number(listed),id);return this.post(id);});}
+  history(owner,cursor=''){const anchor=cursor?(this.post(cursor)||this.get(cursor)):null;if(cursor&&(!anchor||anchor.owner!==owner))fail('invalid_cursor');const created=anchor?.created??Number.MAX_SAFE_INTEGER,key=anchor?.id||'z';const rows=[...this.sql.exec("SELECT id,created,'post' AS kind FROM posts WHERE owner=? AND state='published' AND (created<? OR (created=? AND id<?)) UNION ALL SELECT id,created,kind FROM media WHERE owner=? AND state NOT IN ('deleted','failed') AND NOT EXISTS(SELECT 1 FROM attachments a WHERE a.media_id=media.id) AND (created<? OR (created=? AND id<?)) ORDER BY created DESC,id DESC LIMIT 51",owner,created,created,key,owner,created,created,key)];return {items:rows.slice(0,50).map(row=>row.kind==='post'?this.post(row.id):this.get(row.id)),next:rows.length>50?rows[49].id:null};}
+  feed(cursor='',ownerId,now){const anchor=cursor?this.post(cursor):null;if(cursor&&(!anchor||!anchor.listed||anchor.state!=='published'))fail('invalid_cursor');const created=anchor?.created??Number.MAX_SAFE_INTEGER,key=anchor?.id||'z';const rows=[...this.sql.exec("SELECT p.id FROM posts p JOIN users u ON u.id=p.owner WHERE p.state='published' AND p.listed=1 AND u.erasing=0 AND (p.owner=? OR coalesce(json_extract(CASE WHEN u.pending IS NOT NULL AND u.effective<=? THEN json_extract(u.pending,'$.limits') ELSE u.policy END,'$.sharingBlocked'),0)=0) AND (p.created<? OR (p.created=? AND p.id<?)) ORDER BY p.created DESC,p.id DESC LIMIT 21",ownerId||'',now,created,created,key)];return {items:rows.slice(0,20).map(row=>this.publicShare(row.id,ownerId,now)),next:rows.length>20?rows[19].id:null};}
+  deletePost(id,owner,administrator=false){return this.atomic(()=>{const post=this.post(id);if(!post||!administrator&&post.owner!==owner)fail('not_found',404);this.sql.exec("UPDATE posts SET state='deleting',listed=0 WHERE id=?",id);this.sql.exec("UPDATE media SET state='deleting',lease=0 WHERE id IN (SELECT media_id FROM attachments WHERE post_id=?) AND state NOT IN ('deleted','failed','uncertain','preparing')",id);return {ok:true,pending:true};});}
+  publicGet(id,ownerId,now){const item=this.get(id);if(!item||item.state!=='published')fail('not_found',404);const row=this.activate(item.owner,now);if(row?.erasing||item.owner!==ownerId&&JSON.parse(row?.policy||'{}').sharingBlocked===true)fail('sharing_suspended',403);return item;}
   key() { return this.atomic(()=>{let key=this.one("SELECT value FROM settings WHERE id='delivery-key'")?.value;if(!key){key=random();this.sql.exec("INSERT INTO settings VALUES ('delivery-key',?)",key);}return key;}); }
   videoToken(id,now) {const row=this.one('SELECT value FROM settings WHERE id=?','video:'+id);if(!row)return null;const value=JSON.parse(row.value);return value.expires>now?value.token:null;}
   saveVideoToken(id,token,expires) {this.sql.exec('INSERT INTO settings VALUES (?,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value','video:'+id,JSON.stringify({token,expires}));}
@@ -55,11 +80,11 @@ export class Repository {
       const user=this.account(data.owner,limits.defaults,limits.ownerId,now);this.assertPublisher(data.owner,limits.ownerId);
       if(exceeds(user.usage.dailyUploads+1,user.limits.dailyUploads))fail('upload_quota',429);
       if(exceeds(user.usage.images+(data.kind==='image'?1:0),user.limits.images)||exceeds(user.usage.videoSeconds+data.duration,user.limits.videoSeconds))fail('storage_quota',429);
-      if(data.kind==='video'&&(exceeds(data.duration,user.limits.videoDuration)||exceeds(data.bytes,user.limits.videoBytes)))fail('upload_quota',429);
+      if(data.kind==='video'&&exceeds(data.duration,user.limits.videoDuration))fail('upload_quota',429);
       if(!isOwner){
-        if(this.one('SELECT count(*) AS n FROM media WHERE owner!=? AND created>=?',limits.ownerId||'',day).n>=limits.daily||this.one("SELECT count(*) AS n FROM media WHERE owner=? AND state IN ('preparing','uploading')",data.owner).n>=3)fail('upload_quota',429);
-        if(data.kind==='image'&&this.one("SELECT count(*) AS n FROM media WHERE owner!=? AND kind='image' AND state NOT IN ('deleted','failed')",limits.ownerId||'').n>=limits.images)fail('storage_quota',429);
-        if(data.kind==='video'&&(this.one("SELECT coalesce(sum(duration),0) AS n FROM media WHERE owner!=? AND kind='video' AND state NOT IN ('deleted','failed')",limits.ownerId||'').n+data.duration)>limits.videoSeconds)fail('storage_quota',429);
+        if(exceeds(this.one('SELECT count(*) AS n FROM media WHERE owner!=? AND created>=?',limits.ownerId||'',day).n+1,limits.daily)||this.one("SELECT count(*) AS n FROM media WHERE owner=? AND state IN ('preparing','uploading')",data.owner).n>=3)fail('upload_quota',429);
+        if(data.kind==='image'&&exceeds(this.one("SELECT count(*) AS n FROM media WHERE owner!=? AND kind='image' AND state NOT IN ('deleted','failed')",limits.ownerId||'').n+1,limits.images))fail('storage_quota',429);
+        if(data.kind==='video'&&exceeds(this.one("SELECT coalesce(sum(duration),0) AS n FROM media WHERE owner!=? AND kind='video' AND state NOT IN ('deleted','failed')",limits.ownerId||'').n+data.duration,limits.videoSeconds))fail('storage_quota',429);
       }
       this.sql.exec('INSERT INTO users(id,identity,updated) VALUES (?,?,?) ON CONFLICT(id) DO NOTHING',data.owner,JSON.stringify(data.author),now);
       const values=[data.id,data.owner,JSON.stringify(data.author),data.kind,data.title,data.caption||'',data.sourceUrl,data.sourceName,data.bytes,data.mime,data.duration,now,now+86400];
@@ -79,6 +104,9 @@ export class Repository {
   deleted(id) { this.sql.exec("UPDATE media SET state='deleted',upload_url=NULL,provider_id=NULL WHERE id=? AND state='deleting'",id);this.sql.exec('DELETE FROM settings WHERE id=?','video:'+id); }
   cleanup(now) {
     return this.atomic(()=>{
+      this.sql.exec("UPDATE posts SET state='deleting',listed=0 WHERE owner IN (SELECT id FROM users WHERE erasing=1)");
+      this.sql.exec("DELETE FROM attachments WHERE post_id IN (SELECT id FROM posts WHERE state='deleting' AND NOT EXISTS(SELECT 1 FROM attachments a JOIN media m ON m.id=a.media_id WHERE a.post_id=posts.id AND m.state NOT IN ('deleted','failed')))");
+      this.sql.exec("DELETE FROM posts WHERE state='deleting' AND NOT EXISTS(SELECT 1 FROM attachments WHERE post_id=posts.id)");
       for(const table of ['sessions','auth','limits'])this.sql.exec(`DELETE FROM ${table} WHERE expires<?`,now);
       this.sql.exec('DELETE FROM audit WHERE created<?',now-7776000);
       this.sql.exec("DELETE FROM rights WHERE state='resolved' AND resolved<?",now-7776000);

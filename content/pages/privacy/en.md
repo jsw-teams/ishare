@@ -24,6 +24,8 @@ blocks:
         - Published images, videos, titles, captions, author identities and supplied source links are public. Viewers
           need no account and may download or copy media. Share only material you have the right to publish without
           private information.
+        - The choice to appear on the platform homepage is stored with the post and is off by default. You can change
+          it in My shares. Keeping a post out of the feed does not make its share links private.
   - - type: section
       title: Identity and media storage
       tone: soft

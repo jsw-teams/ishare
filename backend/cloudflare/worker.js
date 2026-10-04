@@ -9,6 +9,14 @@ export class ShareStore extends DurableObject {
   constructor(ctx,env){super(ctx,env);this.repository=new Repository(ctx.storage.sql,fn=>ctx.storage.transactionSync(fn));}
   invoke(method,args){try{return this.repository[method](...args);}catch(error){if(error instanceof ServiceError)return {__ishareError:error.message,status:error.status};throw error;}}
   get(id){return this.invoke('get',[id]);}
+  quotaSettings(...args){return this.invoke('quotaSettings',args);}
+  setQuotaSettings(...args){return this.invoke('setQuotaSettings',args);}
+  publicShare(...args){return this.invoke('publicShare',args);}
+  createPost(...args){return this.invoke('createPost',args);}
+  visibility(...args){return this.invoke('visibility',args);}
+  history(...args){return this.invoke('history',args);}
+  feed(...args){return this.invoke('feed',args);}
+  deletePost(...args){return this.invoke('deletePost',args);}
   publicGet(...args){return this.invoke('publicGet',args);}
   key(){return this.invoke('key',[]);}
   videoToken(...args){return this.invoke('videoToken',args);}

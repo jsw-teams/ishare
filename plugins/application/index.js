@@ -6,12 +6,17 @@ function translate(html,locale){const text=messages(locale);return html.replace(
 export default function application(api){
   api.registerFilter('html:beforeLayout',async(html,{page,config})=>{
     if(page.urlPath===localizedUrl(config,page.locale,''))return translate(await readFile(new URL('./application.html',import.meta.url),'utf8'),page.locale);
+    if(page.urlPath===localizedUrl(config,page.locale,'mine/'))return translate(await readFile(new URL('./mine.html',import.meta.url),'utf8'),page.locale);
     return html;
   });
   api.registerFilter('html:afterLayout',(html,{page,config})=>{
     html=translate(html,page.locale);
+    const brand=messages(page.locale).brand;
+    html=html.replaceAll('<span>ishare</span>','<span>'+brand+'</span>').replaceAll('aria-label="ishare"','aria-label="'+brand+'"').replaceAll('content="ishare"','content="'+brand+'"').replaceAll(' - ishare</title>',' - '+brand+'</title>');
+    for(const path of ['mine/','guide/'])html=html.replaceAll('href="/'+path+'"','href="'+localizedUrl(config,page.locale,path)+'"');
     html=html.replaceAll('class="brand" href="/"','class="brand" href="'+localizedUrl(config,page.locale,'')+'"');
     if(html.includes('id="publish-form"'))return html.replace('</body>','<script type="module" src="/ishare/app.js"></script></body>');
+    if(html.includes('id="feed"'))html=html.replace('</body>','<script type="module" src="/ishare/feed.js"></script></body>');
     // Privacy pages do not initialize the publishing application or call /api.
     return html.replace(/<a class="button button-primary" id="login"[\s\S]*?<span id="identity"><\/span>/,'');
   });

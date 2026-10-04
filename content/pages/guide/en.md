@@ -16,35 +16,35 @@ blocks:
 - columns: 2
   cells:
   - - type: section
-      title: Sign in and choose a file
+      title: Write your story
       tone: soft
       blocks:
       - type: text
-        text: Sign in with GitHub. Choose an image or video. Images allow up to 10 MB; ordinary-account videos up
-          to ten minutes and 1 GiB.
+        text: Open My shares, sign in with GitHub, then write a title and text before adding your attachments.
   - - type: section
-      title: Add a title and story
+      title: Add images and videos
       tone: soft
       blocks:
       - type: text
-        text: Give your media a title, add text and an optional source link. Source information is supplied by the
-          publisher.
+        text: A post supports up to 50 attachments. Cloudflare limits images to 10 MB and videos to less than 30
+          GB. Account storage and video duration quotas are shown after sign-in; there is no additional application
+          file-size cap.
 - columns: 2
   cells:
   - - type: section
-      title: Copy a link or embed
+      title: Choose homepage visibility
       tone: soft
       blocks:
       - type: text
-        text: Once published, copy a share link, media link or embed code from your library. Pages keep your author
-          identity, caption and source.
+        text: The homepage feed only shows posts whose publishers opt in. This is off by default; share URLs remain
+          publicly accessible either way.
   - - type: section
-      title: Manage your content
+      title: Share a complete post or Markdown links
       tone: soft
       blocks:
       - type: text
-        text: Delete your media, export metadata or send privacy requests. Our caches can last five minutes; other
-          sites may hold independent copies.
+        text: Your sharing history provides a complete-post oEmbed iframe and Markdown links, one per image. Video
+          Markdown links open a viewing page. You can change homepage visibility or delete a share from the history.
 - columns: 1
   cells:
   - - type: notice
@@ -55,6 +55,6 @@ blocks:
     - type: link-list
       title: ishare
       items:
-      - label: Back to your workspace
-        url: /[launge]/#workspace
+      - label: My shares
+        url: /[launge]/mine/
 ---

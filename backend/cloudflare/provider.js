@@ -3,10 +3,10 @@ const encoder=new TextEncoder();
 const providerId = value => typeof value==='string' && /^[a-zA-Z0-9-]{20,64}$/.test(value) ? value : fail('invalid_upstream',502);
 
 export function resourceConfiguration(env,kind) {
-  const p=kind==='image'?'IMAGES':'STREAM';
-  const account=env[p+'_ACCOUNT_ID'],token=env.MEDIA_API_TOKEN;
+  // One resource account serves Images and Stream. Accept existing Secret names
+  // while operators migrate; CUSTOMER_CODE was previously mislabelled as an ID.
+  const account=env.STREAM_ACCOUNT_ID||env.IMAGES_ACCOUNT_ID||env.STREAM_CUSTOMER_CODE,token=env.MEDIA_API_TOKEN;
   if(!/^[a-f0-9]{32}$/.test(account||'')||typeof token!=='string'||token.length<10)fail('service_unavailable',503);
-  if(kind==='video'&&!/^[a-z0-9]{4,100}$/.test(env.STREAM_CUSTOMER_CODE||''))fail('service_unavailable',503);
   if(kind==='video'&&!!env.STREAM_SIGNING_KEY!==!!env.STREAM_SIGNING_KEY_ID)fail('service_unavailable',503);
   return {account,token};
 }
@@ -22,6 +22,7 @@ export function provider(env,request=fetch) {
     return result.result;
   }
   return {
+    async playbackAddress(item) {const result=await call('video',`stream/${providerId(item.provider_id)}`);const url=new URL(result.playback?.hls||'https://invalid');if(result.requireSignedURLs!==true||url.protocol!=='https:'||!/^customer-[a-z0-9]+\.cloudflarestream\.com$/.test(url.hostname)||url.port||url.username||url.password||url.pathname!==`/${item.provider_id}/manifest/video.m3u8`)fail('invalid_upstream',502);return url;},
     async playbackToken(item) {const result=await call('video',`stream/${providerId(item.provider_id)}/token`,{method:'POST'});if(typeof result.token!=='string'||!/^[A-Za-z0-9_.-]+$/.test(result.token)||result.token.length>4096)fail('invalid_upstream',502);return result.token;},
     async create(item,now) {
       if(item.kind==='image') {
@@ -62,13 +63,14 @@ export function imageAddress(env,item) {
 }
 export async function videoAddress(env,item,now,store,request=fetch) {
   resourceConfiguration(env,'video');providerId(item.provider_id);
-  const cached=await store.videoToken(item.id,now);if(cached)return new URL(`https://customer-${env.STREAM_CUSTOMER_CODE}.cloudflarestream.com/${cached}/manifest/video.m3u8`);
-  if(!env.STREAM_SIGNING_KEY&&!env.STREAM_SIGNING_KEY_ID){const token=await provider(env,request).playbackToken(item);await store.saveVideoToken(item.id,token,now+3300);return new URL(`https://customer-${env.STREAM_CUSTOMER_CODE}.cloudflarestream.com/${token}/manifest/video.m3u8`);}
+  const cached=await store.videoToken(item.id,now);if(cached?.startsWith('https://'))return new URL(cached);
+  const upstream=provider(env,request),address=await upstream.playbackAddress(item);
+  if(!env.STREAM_SIGNING_KEY&&!env.STREAM_SIGNING_KEY_ID){const token=cached||await upstream.playbackToken(item);address.pathname=`/${token}/manifest/video.m3u8`;await store.saveVideoToken(item.id,address.href,now+3300);return address;}
   let jwk;try{jwk=JSON.parse(new TextDecoder().decode(unb64(env.STREAM_SIGNING_KEY)));}catch{fail('service_unavailable',503);}
   const key=await crypto.subtle.importKey('jwk',jwk,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['sign']).catch(()=>fail('service_unavailable',503));
   const header=b64(encoder.encode(JSON.stringify({alg:'RS256',kid:env.STREAM_SIGNING_KEY_ID})));
   const payload=b64(encoder.encode(JSON.stringify({sub:item.provider_id,kid:env.STREAM_SIGNING_KEY_ID,exp:now+7200,nbf:now-30})));
   const token=header+'.'+payload+'.'+b64(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',key,encoder.encode(header+'.'+payload)));
-  await store.saveVideoToken(item.id,token,now+6900);
-  return new URL(`https://customer-${env.STREAM_CUSTOMER_CODE}.cloudflarestream.com/${token}/manifest/video.m3u8`);
+  address.pathname=`/${token}/manifest/video.m3u8`;await store.saveVideoToken(item.id,address.href,now+6900);
+  return address;
 }

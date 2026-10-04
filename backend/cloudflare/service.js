@@ -3,12 +3,12 @@ import { authReady, readSession, requireSite, requireCsrf, authorize, callback, 
 import { provider, resourceConfiguration } from './provider.js';
 import { publicRecord, oembed, shareId, renderPage } from './views.js';
 import { deliver } from './delivery.js';
-import { defaults, changes, accountId, exceeds } from './quotas.js';
+import { changes, accountId, exceeds, settingsChange } from './quotas.js';
 import { rpcStore } from './rpc.js';
 const imageTypes=['image/jpeg','image/png','image/gif','image/webp','image/avif'];
 const videoTypes=['video/mp4','video/webm','video/quicktime','video/x-matroska'];
-const methodFor={session:'GET',list:'GET','get-upload':'GET',get:'GET',oembed:'GET','create-upload':'POST',publish:'POST',delete:'POST',logout:'POST','admin-users':'GET','admin-user':'GET','admin-set-user':'POST','admin-list':'GET','admin-audit':'GET','admin-reconcile':'POST','admin-rights':'GET','admin-resolve-right':'POST',export:'GET',rights:'GET','request-right':'POST','erase-account':'POST'};
-const privateActions=new Set(Object.keys(methodFor).filter(key=>!['get','oembed'].includes(key)));
+const methodFor={feed:'GET',history:'GET','create-post':'POST','delete-post':'POST','set-visibility':'POST','admin-settings':'GET','admin-set-settings':'POST',session:'GET',list:'GET','get-upload':'GET',get:'GET',oembed:'GET','create-upload':'POST',publish:'POST',delete:'POST',logout:'POST','admin-users':'GET','admin-user':'GET','admin-set-user':'POST','admin-list':'GET','admin-audit':'GET','admin-reconcile':'POST','admin-rights':'GET','admin-resolve-right':'POST',export:'GET',rights:'GET','request-right':'POST','erase-account':'POST'};
+const privateActions=new Set(Object.keys(methodFor).filter(key=>!['get','oembed','feed'].includes(key)));
 const ready=(env,kind)=>{try{resourceConfiguration(env,kind);return true;}catch{return false;}};
 const allowedPublisher=(env,user)=>user?.id===env.OWNER_GITHUB_ID||!env.PUBLISHER_IDS||env.PUBLISHER_IDS==='*'||env.PUBLISHER_IDS.split(',').map(s=>s.trim()).includes(user?.id);
 const admin=(env,user)=>!!user&&(user.id===env.OWNER_GITHUB_ID||env.ADMIN_IDS?.split(',').map(s=>s.trim()).includes(user.id));
@@ -38,7 +38,7 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     const match=url.pathname.match(/^\/(s|embed|i|v)\/([a-f0-9]{32})(?:\/([^/]+))?$/);
     if(match){
       if(!['GET','HEAD'].includes(request.method))fail('method_not_allowed',405);if(url.search)fail('invalid_query');
-      const item=await store.publicGet(match[2],env.OWNER_GITHUB_ID,now);
+      const item=await store[match[1]==='s'||match[1]==='embed'?'publicShare':'publicGet'](match[2],env.OWNER_GITHUB_ID,now);
       if(match[1]==='s'||match[1]==='embed'){if(match[3])fail('not_found',404);return await renderPage(item,env,site,match[1]==='embed');}
       if((match[1]==='i')!==(item.kind==='image')||!match[3])fail('not_found',404);
       return await deliver(request,env,item,match[3],store,context,{requestUpstream,requestProvider});
@@ -47,7 +47,7 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
       if(request.method!=='GET')fail('method_not_allowed',405);
       for(const name of url.searchParams.keys())if(!['url','format','maxwidth','maxheight'].includes(name))fail('invalid_query');
       if(url.searchParams.has('format')&&url.searchParams.get('format')!=='json')fail('unsupported_format',501);
-      const item=await store.publicGet(shareId(url.searchParams.get('url'),site),env.OWNER_GITHUB_ID,now);
+      const item=await store.publicShare(shareId(url.searchParams.get('url'),site),env.OWNER_GITHUB_ID,now);
       return json(oembed(item,site,width(url.searchParams.get('maxwidth')),height(url.searchParams.get('maxheight'))),200,{'Cache-Control':'public, max-age=30',...cors});
     }
     if(url.pathname!=='/api')fail('not_found',404);
@@ -56,15 +56,17 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     if(request.method!==methodFor[action])fail('method_not_allowed',405);
     if(privateActions.has(action))requireSite(request);
     const session=privateActions.has(action)?await readSession(request,store,now):null;
-    const base=defaults(env),account=session?await store.account(session.user.id,base,env.OWNER_GITHUB_ID,now):null;
-    if(action==='session')return json({user:session?.user||null,csrf:session?.csrf||null,loginAvailable:authReady(env),canPublish:!!session&&allowedPublisher(env,session.user)&&!account.blocked&&!account.sharingBlocked,isAdmin:admin(env,session?.user),account,imagesAvailable:ready(env,'image'),videosAvailable:ready(env,'video'),maxVideoDuration:account?.limits.videoDuration??36000,maxVideoBytes:account?.limits.videoBytes??29_999_999_999});
+    if(action==='feed'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.feed(cursor,env.OWNER_GITHUB_ID,now);return json({...data,items:data.items.map(item=>publicRecord(item,site))},200,{...cors,'Cache-Control':'public, max-age=30'});}
     if(action==='get'||action==='oembed'){
       const key=action==='oembed'?shareId(resource(request),site):id(resource(request));
-      const item=await store.publicGet(key,env.OWNER_GITHUB_ID,now);return json(action==='get'?publicRecord(item,site):oembed(item,site),200,cors);
+      const item=await store.publicShare(key,env.OWNER_GITHUB_ID,now);return json(action==='get'?publicRecord(item,site):oembed(item,site),200,cors);
     }
+    const settings=await store.quotaSettings(now),base=settings.defaults,account=session?await store.account(session.user.id,base,env.OWNER_GITHUB_ID,now):null;
+    if(action==='session')return json({user:session?.user||null,csrf:session?.csrf||null,loginAvailable:authReady(env),canPublish:!!session&&allowedPublisher(env,session.user)&&!account.blocked&&!account.sharingBlocked,isAdmin:admin(env,session?.user),account,imagesAvailable:ready(env,'image'),videosAvailable:ready(env,'video'),maxVideoDuration:account?.limits.videoDuration??36000,maxVideoBytes:29_999_999_999,quotaNotice:settings.pending?{effective:settings.pending.effective,note:settings.note}:null});
     if(!session)fail('login_required',401);
     if(action.startsWith('admin-')){
       if(!admin(env,session.user))fail('admin_required',403);
+      if(action==='admin-settings'||action==='admin-set-settings'){if(session.user.id!==env.OWNER_GITHUB_ID)fail('owner_required',403);if(action==='admin-settings')return json(settings);requireCsrf(request,session);return json(await store.setQuotaSettings(settingsChange(await jsonBody(request)),session.user.id,now));}
       if(action==='admin-users')return json(await store.users(resource(request),base,env.OWNER_GITHUB_ID,now));
       if(action==='admin-reconcile'){if(session.user.id!==env.OWNER_GITHUB_ID)fail('owner_required',403);requireCsrf(request,session);const body=await jsonBody(request);if(body.confirmedAbsent!==true)fail('confirmation_required');return json(await store.reconcile(id(resource(request)),session.user.id,text(body.note,500),now));}
       if(action==='admin-audit')return json({items:await store.audit()});
@@ -75,8 +77,9 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
       if(action==='admin-user')return json(await store.account(target,base,env.OWNER_GITHUB_ID,now));
       requireCsrf(request,session);const change=changes(await jsonBody(request));await store.setAccount(target,change,session.user.id,env.OWNER_GITHUB_ID,now,base);return json(await store.account(target,base,env.OWNER_GITHUB_ID,now));
     }
+    if(action==='history'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.history(session.user.id,cursor);return json({...data,items:data.items.map(item=>publicRecord(item,site))});}
     if(action==='rights')return json({items:await store.rights(session.user.id)});
-    if(action==='export'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.list(session.user.id,cursor);return json({identity:session.user,account,requests:await store.rights(session.user.id),...data,items:data.items.map(item=>publicRecord(item,site))});}
+    if(action==='export'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.history(session.user.id,cursor);return json({identity:session.user,account,requests:await store.rights(session.user.id),...data,items:data.items.map(item=>publicRecord(item,site))});}
     if(action==='list'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.list(session.user.id,cursor);return json({...data,items:data.items.map(item=>publicRecord(item,site))});}
     if(action==='get-upload'){if(account.blocked||account.sharingBlocked)fail('publishing_suspended',403);const item=await store.get(id(resource(request)));if(!item||item.owner!==session.user.id||item.state!=='uploading')fail('not_found',404);return json({id:item.id,bytes:item.bytes,mime:item.mime,uploadUrl:item.upload_url,protocol:item.kind==='video'?'tus':'post'});}
     requireCsrf(request,session);
@@ -84,18 +87,26 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     if(action==='erase-account')return json(await store.erase(session.user.id,now),202);
     const body=await jsonBody(request),upstream=provider(env,requestProvider);
     if(action==='request-right'){if(!['appeal','rectify','restrict','delete','other'].includes(body.kind))fail('invalid_request');return json(await store.requestRight(session.user.id,body.kind,text(body.message,2000),now),201);}
+    if(action==='delete-post')return json(await store.deletePost(id(resource(request)),session.user.id,admin(env,session.user)),202);
+    if(action==='set-visibility'){if(typeof body.listed!=='boolean')fail('invalid_field');return json(publicRecord(await store.visibility(id(resource(request)),session.user.id,body.listed,env.OWNER_GITHUB_ID),site));}
+    if(action==='create-post'){
+      if(!allowedPublisher(env,session.user)||account.blocked||account.sharingBlocked)fail('publishing_suspended',403);
+      if(Object.keys(body).some(key=>!['title','caption','sourceUrl','sourceName','mediaIds','listed'].includes(key))||!Array.isArray(body.mediaIds)||body.mediaIds.length>50||typeof body.listed!=='boolean')fail('invalid_post');
+      const data={id:resource(request)?id(resource(request)):crypto.randomUUID().replaceAll('-',''),owner:session.user.id,author:session.user,title:text(body.title,200),caption:text(body.caption,5000,true),sourceUrl:body.sourceUrl?https(body.sourceUrl).href:'',sourceName:text(body.sourceName,120,true),mediaIds:body.mediaIds.map(id),listed:body.listed};
+      if(session.user.id!==env.OWNER_GITHUB_ID)await store.rate('posts:'+session.user.id,100,now,86400);return json(publicRecord(await store.createPost(data,env.OWNER_GITHUB_ID,now),site),201);
+    }
     if(action==='create-upload'){
       if(!allowedPublisher(env,session.user)||account.blocked||account.sharingBlocked)fail('publishing_suspended',403);
       for(const key of Object.keys(body))if(!['kind','title','caption','sourceUrl','sourceName','bytes','mime','duration'].includes(key))fail('invalid_field');
       if(!['image','video'].includes(body.kind))fail('invalid_kind');resourceConfiguration(env,body.kind);
       if(!(body.kind==='image'?imageTypes:videoTypes).includes(body.mime))fail('unsupported_media_type',415);
-      const bytes=number(body.bytes,0,body.kind==='image'?10_000_000:29_999_999_999);
-      const duration=body.kind==='image'?0:number(body.duration,120,36000);
-      if(body.kind==='video'&&(exceeds(bytes,account.limits.videoBytes)||exceeds(duration,account.limits.videoDuration)))fail('upload_quota',429);
+      const bytes=body.bytes;if(!Number.isSafeInteger(bytes)||bytes<1)fail('invalid_size');if(bytes>(body.kind==='image'?10_000_000:29_999_999_999))fail('file_too_large',413);
+      const duration=body.kind==='image'?0:body.duration;if(!Number.isSafeInteger(duration)||duration<0||body.kind==='video'&&(duration<1||duration>36000))fail('invalid_duration');
+      if(body.kind==='video'&&exceeds(duration,account.limits.videoDuration))fail('upload_quota',429);
       const sourceUrl=body.sourceUrl?https(body.sourceUrl).href:'';
       const title=text(body.title,200),caption=text(body.caption,5000,true),sourceName=text(body.sourceName,120,true);
       const applicationId=crypto.randomUUID().replaceAll('-','');
-      const item=await store.reserve({id:applicationId,owner:session.user.id,author:session.user,kind:body.kind,title,caption,sourceUrl,sourceName,bytes,mime:body.mime,duration},{defaults:base,ownerId:env.OWNER_GITHUB_ID,images:number(env.MAX_IMAGES,10000,100000),videoSeconds:number(env.MAX_VIDEO_SECONDS,36000,10000000),daily:number(env.MAX_UPLOADS_PER_DAY,500,10000)},now);
+      const item=await store.reserve({id:applicationId,owner:session.user.id,author:session.user,kind:body.kind,title,caption,sourceUrl,sourceName,bytes,mime:body.mime,duration},{defaults:base,ownerId:env.OWNER_GITHUB_ID,...settings.shared},now);
       try{const grant=await upstream.create(item,now);await store.attach(applicationId,grant.providerId,grant.uploadUrl,now);return json({id:applicationId,uploadUrl:grant.uploadUrl,protocol:grant.protocol},201);}catch(error){if(error.safeToRelease)await store.failed(applicationId);else await store.uncertain(applicationId);throw error;}
     }
     const mediaId=id(resource(request)),item=await store.get(mediaId);

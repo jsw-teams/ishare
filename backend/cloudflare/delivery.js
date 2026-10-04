@@ -4,10 +4,9 @@ const encoder=new TextEncoder();
 async function key(secret){return crypto.subtle.importKey('raw',unb64(secret),'AES-GCM',false,['encrypt','decrypt']);}
 export function upstreamUrl(value,base,env) {
   let url;try{url=base?new URL(value,base):new URL(value);}catch{fail('invalid_manifest',502);}
-  const host=`customer-${env.STREAM_CUSTOMER_CODE}.cloudflarestream.com`;
-  if(url.protocol!=='https:'||url.hostname!==host||url.port||url.username||url.password||url.hash||url.href.length>3072)fail('invalid_manifest',502);
+  if(url.protocol!=='https:'||!/^customer-[a-z0-9]+\.cloudflarestream\.com$/.test(url.hostname)||url.port||url.username||url.password||url.hash||url.href.length>6000)fail('invalid_manifest',502);
   // Every resource must remain in this video's signed namespace; no generic forward proxy.
-  if(base&&url.pathname.split('/')[1]!==new URL(base).pathname.split('/')[1])fail('invalid_manifest',502);
+  if(base&&(url.hostname!==new URL(base).hostname||url.pathname.split('/')[1]!==new URL(base).pathname.split('/')[1]))fail('invalid_manifest',502);
   if(/%(?:2f|5c|2e|00)/i.test(url.pathname)||url.pathname.includes('\\'))fail('invalid_manifest',502);
   return url;
 }

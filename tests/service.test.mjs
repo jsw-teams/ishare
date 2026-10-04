@@ -58,9 +58,9 @@ test('public metadata and standard oEmbed preserve attribution without provider 
     store.reserve(media(),limits,now());store.attach('a'.repeat(32),'provider-id-123456789012345','https://upload.imagedelivery.net/capability',now());store.publish('a'.repeat(32),'42',0,now());
     const response=await handle(request('get',{resource:'a'.repeat(32),origin:'https://website.example'}),env,ctx);assert.equal(response.status,200);assert.equal(response.headers.get('Access-Control-Allow-Origin'),'*');
     const body=await response.text();assert.doesNotMatch(body,/provider-id|imagedelivery|API_TOKEN|upload_url/);assert.match(body,/publisher/);
-    const embed=await handle(new Request('https://share.js.gripe/oembed?url='+encodeURIComponent('https://share.js.gripe/s/'+'a'.repeat(32))+'&maxwidth=400'),env,ctx);const data=await embed.json();assert.equal(data.version,'1.0');assert.equal(data.width,400);assert.match(data.html,/share.js.gripe\/embed\//);assert.doesNotMatch(data.html,/<script>|imagedelivery/);
-    assert.equal((await handle(new Request('https://share.js.gripe/oembed?url=https://169.254.169.254/latest'),env,ctx)).status,404);
-    assert.equal((await handle(new Request('https://share.js.gripe/api?action=get'),env,ctx)).status,400);
-    assert.equal((await handle(new Request('https://share.js.gripe/.env'),env,ctx)).status,404);
+    const embed=await handle(new Request('https://ishare.js.gripe/oembed?url='+encodeURIComponent('https://ishare.js.gripe/s/'+'a'.repeat(32))+'&maxwidth=400'),env,ctx);const data=await embed.json();assert.equal(data.version,'1.0');assert.equal(data.width,400);assert.match(data.html,/ishare.js.gripe\/embed\//);assert.doesNotMatch(data.html,/<script>|imagedelivery/);
+    assert.equal((await handle(new Request('https://ishare.js.gripe/oembed?url=https://169.254.169.254/latest'),env,ctx)).status,404);
+    assert.equal((await handle(new Request('https://ishare.js.gripe/api?action=get'),env,ctx)).status,400);
+    assert.equal((await handle(new Request('https://ishare.js.gripe/.env'),env,ctx)).status,404);
   }finally{database.close();}
 });

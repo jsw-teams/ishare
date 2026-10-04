@@ -7,10 +7,7 @@
   "preview_urls": false,
   "keep_vars": true,
   "vars": {
-    "OWNER_GITHUB_ID": "228026986",
-    "MAX_IMAGES": "10000",
-    "MAX_VIDEO_SECONDS": "36000",
-    "MAX_UPLOADS_PER_DAY": "500"
+    "OWNER_GITHUB_ID": "228026986"
   },
   "assets": {
     "directory": "./dist",

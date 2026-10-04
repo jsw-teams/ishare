@@ -7,7 +7,7 @@ blocks:
 - columns: 1
   cells:
   - - type: hero
-      eyebrow: ishare
+      eyebrow: 爱分享
       title: 分享可以很简单。公开的内容、资料的保存与管理方式，都在这里说明。
       mascotSrc: /brand/bear-mascot.290e2ec64418a2fa.webp
       mascotAlt: Black bear mascot
@@ -22,6 +22,7 @@ blocks:
       - type: text
         paragraphs:
         - 图片、视频、标题、配文、作者与填写的来源页面会公开显示。请勿上传没有分享权利或包含不应公开信息的媒体。浏览者可以下载或另行转载公开内容。
+        - 是否在平台首页展示的选择随帖子保存，默认关闭，可在“我的分享”更改。不加入首页不等于私密分享，持有分享链接的人仍可查看。
   - - type: section
       title: 身份与存储
       tone: soft

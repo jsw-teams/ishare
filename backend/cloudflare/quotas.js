@@ -1,10 +1,11 @@
 import { fail } from './security.js';
 
-export const quotaFields=['images','videoSeconds','dailyUploads','videoDuration','videoBytes'];
-export function defaults(env={}) {
-  const values={images:1000,videoSeconds:3600,dailyUploads:50,videoDuration:600,videoBytes:1_073_741_824};
-  for(const key of quotaFields)if(env['QUOTA_'+key]!==undefined){const n=Number(env['QUOTA_'+key]);if(!Number.isSafeInteger(n)||n<0)fail('invalid_configuration',503);values[key]=n;}
-  return values;
+export const quotaFields=['images','videoSeconds','dailyUploads','videoDuration'];
+export function defaults() {return {images:1000,videoSeconds:3600,dailyUploads:50,videoDuration:600};}
+export function settingsChange(body){
+  if(!body||Object.keys(body).some(k=>!['defaults','shared','note','urgent'].includes(k))||typeof body.note!=='string'||!body.note.trim()||body.note.length>500||body.urgent!==undefined&&typeof body.urgent!=='boolean')fail('invalid_field');
+  for(const [section,keys]of [['defaults',quotaFields],['shared',['images','videoSeconds','daily']]]){const value=body[section];if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!keys.includes(k))||keys.some(k=>value[k]!==null&&(!Number.isSafeInteger(value[k])||value[k]<0)))fail('invalid_quota');}
+  return body;
 }
 export function policy(record,base,owner=false) {
   const saved=JSON.parse(record?.policy||'{}');return {blocked:owner?false:!!record?.blocked,sharingBlocked:owner?false:saved.sharingBlocked===true,unlimited:owner,limits:owner?Object.fromEntries(quotaFields.map(k=>[k,null])):Object.fromEntries(quotaFields.map(k=>[k,Object.hasOwn(saved,k)?saved[k]:base[k]]))};

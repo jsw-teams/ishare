@@ -1,0 +1,27 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile,mkdir} from 'node:fs/promises';
+import {extname} from 'node:path';
+import {chromium} from 'playwright';
+import {defaults} from '../backend/cloudflare/quotas.js';
+
+test('social composer uploads multiple attachments, creates one post and exports independent Markdown links',async()=>{
+ const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
+ const account={id:'42',identity:{id:'42',login:'publisher'},limits:defaults(),usage:{images:0,videoSeconds:0},unlimited:false,blocked:false,note:''};const session={user:account.identity,csrf:'fixture',isAdmin:false,account,loginAvailable:true,canPublish:true,imagesAvailable:true,videosAvailable:true,maxVideoDuration:600,maxVideoBytes:29999999999};
+ const records=[],posts=[],errors=[];let uploads=0,submitted=null,visible=false;
+ const record=id=>({id,kind:'image',title:'Image '+id[0],caption:'',state:'published',created:1,published:2,author:account.identity,source:{name:'',url:''},shareUrl:'https://ishare.js.gripe/s/'+id,embedUrl:'https://ishare.js.gripe/embed/'+id,mediaUrl:'https://ishare.js.gripe/i/'+id+'/public'});
+ try{const context=await browser.newContext({viewport:{width:390,height:844},locale:'zh-CN'}),image=await readFile('content/assets/brand/bear-icon.3754101e8d6380da.png');
+ await context.route('**/*',async route=>{const req=route.request(),url=new URL(req.url());if(url.hostname==='upload.imagedelivery.net'){assert.equal(req.method(),'POST');uploads++;return route.fulfill({contentType:'application/json',body:'{"success":true}'});}assert.equal(url.origin,'https://ishare.js.gripe');
+ if(url.pathname.startsWith('/i/'))return route.fulfill({contentType:'image/png',body:image});
+ if(url.pathname==='/api'){assert.equal(url.search,'');const headers=req.headers(),action=headers['x-service-action'],body=req.method()==='POST'?req.postDataJSON():null;if(body)assert.equal(headers['x-csrf-token'],'fixture');let data;
+ switch(action){case 'session':data=session;break;case 'history':data={items:posts,next:null};break;case 'rights':data={items:[]};break;case 'create-upload':{const id=String(records.length+1).repeat(32);records.push(record(id));data={id,uploadUrl:'https://upload.imagedelivery.net/'+id,protocol:'post'};break;}case 'publish':data=records.find(item=>item.id===headers['x-service-resource']);break;case 'create-post':{submitted=body;const id=headers['x-service-resource'];posts.push({id,kind:'post',title:body.title,caption:body.caption,listed:body.listed,author:account.identity,created:1,published:2,state:'published',shareUrl:'https://ishare.js.gripe/s/'+id,embedUrl:'https://ishare.js.gripe/embed/'+id,embedCode:'<iframe src="https://ishare.js.gripe/embed/'+id+'"></iframe>',media:records,markdown:records.map(item=>'![Image]('+item.mediaUrl+')').join('\n\n')});data=posts[0];break;}case 'set-visibility':visible=body.listed;data={...posts[0],listed:visible};break;default:throw Error('Unexpected action: '+action);}
+ return route.fulfill({contentType:'application/json',body:JSON.stringify(data)});}
+ const path=url.pathname.endsWith('/')?url.pathname.slice(1)+'index.html':url.pathname.slice(1),types={'.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.webp':'image/webp','.png':'image/png'};return route.fulfill({contentType:types[extname(path)]||'text/html',body:await readFile('dist/'+path)});
+ });
+ const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto('https://ishare.js.gripe/mine/');await page.waitForFunction(()=>!document.querySelector('#publish-form fieldset').disabled);assert.equal(await page.locator('[name=listed]').isChecked(),false);assert.ok(await page.locator('[name=caption]').evaluate(node=>!!(node.compareDocumentPosition(document.querySelector('[name=file]'))&Node.DOCUMENT_POSITION_FOLLOWING)));
+ await page.locator('[name=title]').fill('在路上的一天');await page.locator('[name=caption]').fill('先写故事，再加照片。');await page.locator('[name=file]').setInputFiles([{name:'morning.png',mimeType:'image/png',buffer:image},{name:'evening.png',mimeType:'image/png',buffer:image}]);assert.equal(await page.locator('.attachment-tile').count(),2);
+ if(process.env.ISHARE_CAPTURE_DESIGN==='1'){await mkdir('docs/images',{recursive:true});await page.screenshot({path:'docs/images/my-shares-mobile.png'});await page.setViewportSize({width:1280,height:960});await page.locator('#workspace').screenshot({path:'docs/images/my-shares-desktop.png'});await page.setViewportSize({width:390,height:844});}
+ await page.locator('#publish-form button[type=submit]').click();await page.waitForFunction(()=>document.querySelector('#library').textContent.includes('在路上的一天'));assert.equal(uploads,2);assert.equal(submitted.listed,false);assert.equal(submitted.mediaIds.length,2);assert.equal(submitted.caption,'先写故事，再加照片。');assert.equal(await page.locator('#library article').count(),1);assert.match(await page.getByLabel('Markdown 媒体链接').inputValue(),/\/i\/1{32}\/public[\s\S]+\/i\/2{32}\/public/);assert.equal(await page.locator('.attachment-tile').count(),0);
+ await page.locator('#library input[type=checkbox]').check();await page.waitForFunction(()=>!document.querySelector('#library input[type=checkbox]').disabled);assert.equal(visible,true);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);await context.close();
+ }finally{await browser.close();}
+});

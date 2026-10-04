@@ -7,7 +7,7 @@ blocks:
 - columns: 1
   cells:
   - - type: hero
-      eyebrow: ishare
+      eyebrow: 爱分享
       title: 选一个瞬间，给它一个可以分享的地址。
       bannerSrc: /brand/bear-banner.ed22b23efa24f8a8.webp
       bannerAlt: Black bear sharing photographs
@@ -16,31 +16,31 @@ blocks:
 - columns: 2
   cells:
   - - type: section
-      title: 登录并选择文件
+      title: 编辑文字
       tone: soft
       blocks:
       - type: text
-        text: 使用 GitHub 登录，选择图片或视频。图片最大 10 MB；普通账户的视频最长 10 分钟、最大 1 GiB。
+        text: 进入“我的分享”，使用 GitHub 登录，先填写标题与配文，再在下方添加媒体附件。
   - - type: section
-      title: 写下标题与配文
+      title: 添加图片和视频
       tone: soft
       blocks:
       - type: text
-        text: 给内容起个标题，添加配文；需要注明出处时，填写来源链接。来源由发布者提供。
+        text: 每篇最多 50 个附件。Cloudflare 图片最大 10 MB，视频小于 30 GB；应用不额外设置文件大小上限。存储与视频时长配额在登录后显示，运营者可以在线调整。
 - columns: 2
   cells:
   - - type: section
-      title: 复制链接或嵌入
+      title: 选择是否加入首页
       tone: soft
       blocks:
       - type: text
-        text: 发布后，在我的媒体复制分享链接、媒体链接或嵌入代码。页面保留作者、配文与来源。
+        text: “愿意将这篇帖子展示在爱分享首页”默认不勾选。只有主动选择的帖子才会进入首页动态；不加入首页，分享链接仍可公开访问。
   - - type: section
-      title: 管理自己的内容
+      title: 完整帖子或 Markdown 分享
       tone: soft
       blocks:
       - type: text
-        text: 随时删除本人媒体，导出资料或提交隐私请求。本站缓存最长五分钟，其他网站副本不受本站控制。
+        text: 分享历史提供完整图文帖的 oEmbed 嵌入代码，以及逐张图片的 Markdown 链接；视频链接打开播放页。可随时调整首页展示选择或删除分享。
 - columns: 1
   cells:
   - - type: notice
@@ -48,8 +48,8 @@ blocks:
       text: 公开内容可以被查看、下载和转发。只分享有发布权利的内容，避免上传私人资料。
       tone: info
     - type: link-list
-      title: ishare
+      title: 爱分享
       items:
-      - label: 回到上传工作区
-        url: /[launge]/#workspace
+      - label: 我的分享
+        url: /[launge]/mine/
 ---
