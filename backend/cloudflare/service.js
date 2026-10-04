@@ -1,14 +1,14 @@
 import { ServiceError, fail, requestOrigin, text, number, id, digest, jsonBody, json, headers } from './security.js';
 import { authReady, readSession, requireSite, requireCsrf, authorize, callback, logout } from './auth.js';
 import { provider, resourceConfiguration } from './provider.js';
-import { publicRecord, oembed, shareId, renderPage } from './views.js';
+import { publicRecord, oembed, shareId, renderPage, renderProfile } from './views.js';
 import { deliver } from './delivery.js';
 import { changes, accountId, exceeds, settingsChange } from './quotas.js';
 import { rpcStore } from './rpc.js';
 const imageTypes=['image/jpeg','image/png','image/gif','image/webp','image/avif'];
 const videoTypes=['video/mp4','video/webm','video/quicktime','video/x-matroska'];
-const methodFor={avatar:'GET',feed:'GET',history:'GET','create-post':'POST','delete-post':'POST','set-visibility':'POST','admin-settings':'GET','admin-set-settings':'POST',session:'GET',list:'GET','get-upload':'GET',get:'GET',oembed:'GET','create-upload':'POST',publish:'POST',delete:'POST',logout:'POST','admin-users':'GET','admin-user':'GET','admin-set-user':'POST','admin-list':'GET','admin-audit':'GET','admin-reconcile':'POST','admin-rights':'GET','admin-resolve-right':'POST',export:'GET',rights:'GET','request-right':'POST','erase-account':'POST'};
-const privateActions=new Set(Object.keys(methodFor).filter(key=>!['get','oembed','feed'].includes(key)));
+const methodFor={'profile-feed':'GET','profile-avatar':'GET','profile':'GET','set-profile':'POST',avatar:'GET',feed:'GET',history:'GET','create-post':'POST','delete-post':'POST','set-visibility':'POST','admin-settings':'GET','admin-set-settings':'POST',session:'GET',list:'GET','get-upload':'GET',get:'GET',oembed:'GET','create-upload':'POST',publish:'POST',delete:'POST',logout:'POST','admin-users':'GET','admin-user':'GET','admin-set-user':'POST','admin-list':'GET','admin-audit':'GET','admin-reconcile':'POST','admin-rights':'GET','admin-resolve-right':'POST',export:'GET',rights:'GET','request-right':'POST','erase-account':'POST'};
+const privateActions=new Set(Object.keys(methodFor).filter(key=>!['get','oembed','feed','profile','profile-feed','profile-avatar'].includes(key)));
 const ready=(env,kind)=>{try{resourceConfiguration(env,kind);return true;}catch{return false;}};
 const allowedPublisher=(env,user)=>user?.id===env.OWNER_GITHUB_ID||!env.PUBLISHER_IDS||env.PUBLISHER_IDS==='*'||env.PUBLISHER_IDS.split(',').map(s=>s.trim()).includes(user?.id);
 const admin=(env,user)=>!!user&&(user.id===env.OWNER_GITHUB_ID||env.ADMIN_IDS?.split(',').map(s=>s.trim()).includes(user.id));
@@ -35,6 +35,8 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
       }
       return await callback(request,env,store,now,requestGithub);
     }
+    const person=url.pathname.match(/^\/u\/([1-9][0-9]{0,19})\/?$/);
+    if(person){if(!['GET','HEAD'].includes(request.method))fail('method_not_allowed',405);if(url.search)fail('invalid_query');return await renderProfile(await store.profile(accountId(person[1])),env,site,request.headers.get('Accept-Language'));}
     const match=url.pathname.match(/^\/(s|embed|i|v)\/([a-f0-9]{32})(?:\/([^/]+))?$/);
     if(match){
       if(!['GET','HEAD'].includes(request.method))fail('method_not_allowed',405);if(url.search)fail('invalid_query');
@@ -61,14 +63,20 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
       const key=action==='oembed'?shareId(resource(request),site):id(resource(request));
       const item=await store.publicShare(key,env.OWNER_GITHUB_ID,now);return json(action==='get'?publicRecord(item,site):oembed(item,site),200,cors);
     }
-    if(action==='avatar'){
-      if(!session)fail('login_required',401);accountId(session.user.id);
-      let image;try{image=await requestUpstream('https://avatars.githubusercontent.com/u/'+session.user.id+'?s=96',{redirect:'manual',signal:AbortSignal.timeout(15000)});}catch{fail('avatar_unavailable',503);}
+    if(action==='profile'){const profile=await store.profile(accountId(resource(request)));return json({...profile,url:site+'/u/'+profile.id},200,{...cors,'Cache-Control':'public, max-age=30',Vary:'X-Service-Action, X-Service-Resource'});}
+    if(action==='profile-feed'){
+      let query;try{query=JSON.parse(resource(request));}catch{fail('invalid_resource');}
+      if(!query||Object.keys(query).some(key=>!['owner','cursor'].includes(key)))fail('invalid_resource');const owner=accountId(query.owner),cursor=query.cursor?id(query.cursor):'';await store.profile(owner);
+      const data=await store.feed(cursor,env.OWNER_GITHUB_ID,now,owner);return json({...data,items:data.items.map(item=>publicRecord(item,site))},200,{...cors,'Cache-Control':'public, max-age=30',Vary:'X-Service-Action, X-Service-Resource'});
+    }
+    if(action==='avatar'||action==='profile-avatar'){
+      if(action==='avatar'&&!session)fail('login_required',401);const owner=action==='avatar'?accountId(session.user.id):accountId(resource(request));if(action==='profile-avatar')await store.profile(owner);
+      let image;try{image=await requestUpstream('https://avatars.githubusercontent.com/u/'+owner+'?s=96',{redirect:'manual',signal:AbortSignal.timeout(15000)});}catch{fail('avatar_unavailable',503);}
       const type=(image.headers.get('Content-Type')||'').split(';')[0];if(!image.ok||!['image/png','image/jpeg','image/webp','image/gif'].includes(type))fail('avatar_unavailable',503);
-      return new Response(image.body,{headers:headers({'Content-Type':type,'Cache-Control':'private, max-age=3600',Vary:'Cookie, X-Service-Action, X-Service-Resource'})});
+      return new Response(image.body,{headers:headers({'Content-Type':type,'Cache-Control':action==='avatar'?'private, max-age=3600':'public, max-age=300',Vary:'Cookie, X-Service-Action, X-Service-Resource'})});
     }
     const settings=await store.quotaSettings(now),base=settings.defaults,account=session?await store.account(session.user.id,base,env.OWNER_GITHUB_ID,now):null;
-    if(action==='session')return json({user:session?.user||null,csrf:session?.csrf||null,loginAvailable:authReady(env),canPublish:!!session&&allowedPublisher(env,session.user)&&!account.blocked&&!account.sharingBlocked,isAdmin:admin(env,session?.user),account,imagesAvailable:ready(env,'image'),videosAvailable:ready(env,'video'),maxVideoDuration:account?.limits.videoDuration??36000,maxVideoBytes:29_999_999_999,quotaNotice:settings.pending?{effective:settings.pending.effective,note:settings.note}:null});
+    if(action==='session')return json({user:session?.user||null,profile:session?.profile||null,csrf:session?.csrf||null,loginAvailable:authReady(env),canPublish:!!session&&allowedPublisher(env,session.user)&&!account.blocked&&!account.sharingBlocked,isAdmin:admin(env,session?.user),account,imagesAvailable:ready(env,'image'),videosAvailable:ready(env,'video'),maxVideoDuration:account?.limits.videoDuration??36000,maxVideoBytes:29_999_999_999,quotaNotice:settings.pending?{effective:settings.pending.effective,note:settings.note}:null});
     if(!session)fail('login_required',401);
     if(action.startsWith('admin-')){
       if(!admin(env,session.user))fail('admin_required',403);
@@ -85,10 +93,11 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     }
     if(action==='history'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.history(session.user.id,cursor);return json({...data,items:data.items.map(item=>publicRecord(item,site))});}
     if(action==='rights')return json({items:await store.rights(session.user.id)});
-    if(action==='export'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.history(session.user.id,cursor);return json({identity:session.user,account,requests:await store.rights(session.user.id),...data,items:data.items.map(item=>publicRecord(item,site))});}
+    if(action==='export'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.history(session.user.id,cursor);return json({identity:session.user,profile:session.profile,account,requests:await store.rights(session.user.id),...data,items:data.items.map(item=>publicRecord(item,site))});}
     if(action==='list'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.list(session.user.id,cursor);return json({...data,items:data.items.map(item=>publicRecord(item,site))});}
     if(action==='get-upload'){if(account.blocked||account.sharingBlocked)fail('publishing_suspended',403);const item=await store.get(id(resource(request)));if(!item||item.owner!==session.user.id||item.state!=='uploading')fail('not_found',404);return json({id:item.id,bytes:item.bytes,mime:item.mime,uploadUrl:item.upload_url,protocol:item.kind==='video'?'tus':'post'});}
     requireCsrf(request,session);
+    if(action==='set-profile'){const body=await jsonBody(request);if(Object.keys(body).some(key=>!['displayName','bio'].includes(key)))fail('invalid_field');await store.rate('profile:'+session.user.id,30,now,3600);return json(await store.setProfile(session.user.id,text(body.displayName,60),text(body.bio,500,true),now));}
     if(action==='logout')return await logout(request,store);
     if(action==='erase-account')return json(await store.erase(session.user.id,now),202);
     const body=await jsonBody(request),upstream=provider(env,requestProvider);

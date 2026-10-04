@@ -8,6 +8,8 @@ import { rpcStore } from './rpc.js';
 export class ShareStore extends DurableObject {
   constructor(ctx,env){super(ctx,env);this.repository=new Repository(ctx.storage.sql,fn=>ctx.storage.transactionSync(fn));}
   invoke(method,args){try{return this.repository[method](...args);}catch(error){if(error instanceof ServiceError)return {__ishareError:error.message,status:error.status};throw error;}}
+  profile(...args){return this.invoke('profile',args);}
+  setProfile(...args){return this.invoke('setProfile',args);}
   get(id){return this.invoke('get',[id]);}
   quotaSettings(...args){return this.invoke('quotaSettings',args);}
   setQuotaSettings(...args){return this.invoke('setQuotaSettings',args);}

@@ -1,6 +1,6 @@
 # ishare
 
-Write a story first, then add multiple image or video attachments. Publish complete attributed oEmbed posts or individual Markdown image links. The homepage lists only posts explicitly opted in by their publishers; My shares contains the composer and personal history. Publishers sign in with GitHub; viewers need no account. Media is public and shareable.
+Write a story first, then add multiple image or video attachments. Publish complete attributed oEmbed posts or individual Markdown image links. The homepage lists only posts explicitly opted in by their publishers; My shares contains the composer, graphical quota usage and personal history. Post avatars link to public author profiles with introductions and published posts. Publishers sign in with GitHub; viewers need no account. Media is public and shareable.
 
 [中文说明](docs/zh-cn.md) / [本站配置说明](docs/configuration.md) / [Quota and privacy operations](docs/operations.md)
 
@@ -10,7 +10,9 @@ Write a story first, then add multiple image or video attachments. Publish compl
 
 ![Text-first multi-attachment composer, local demonstration data](docs/images/my-shares-desktop.png)
 
-![Publishing and user administration, shown with local demonstration data](docs/images/admin-preview.png)
+![Personal center with editable display name, biography and data rights, local demonstration data](docs/images/profile-preview.png)
+
+![User administration with selected tabs and graphical usage, local demonstration data](docs/images/admin-preview.png)
 
 ```mermaid
 flowchart LR
@@ -40,6 +42,8 @@ GitHub login needs `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and callback `http
 ## Quotas and administration
 
 The ordinary-user defaults are 1,000 images stored, 60 video minutes stored, 50 uploads per UTC day, 10 minutes per video. Image delivery counts and delivered video duration are operator monitoring metrics, with no ordinary-user delivery caps. These are application policy defaults, not a Cloudflare free tier. The operator is exempt from all application quotas, including global application budgets. Provider upload/encoding limits still apply: Images accepts at most 10 MB and Stream files must be below 30 GB.
+
+The avatar dropdown opens **Personal center**, **Administration** for administrators, and **Sign out**. Personal center at `/profile/` edits display name and biography with a preview and contains data export, rights requests and account closure. Public `/u/<numeric ID>` pages list published posts whether or not they appear on the homepage.
 
 After operator login, the separate **Administration** page at `/admin/` contains **User management**. Select a user to increase individual limits, leave limits blank for unlimited, suspend publishing or public sharing for documented abuse, restore defaults, inspect media, or remove an individual item. All quota and permission changes require a user-visible reason. Ordinary reductions and suspension receive seven days of notice; explicit urgent abuse restrictions apply immediately. Existing content is not deleted by quota changes. An explicit sharing suspension stops new public delivery without deleting stored media; it follows the same reason, notice and appeal policy. Export, deletion and privacy requests remain available while publishing is suspended.
 

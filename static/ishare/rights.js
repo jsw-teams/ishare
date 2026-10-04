@@ -1,7 +1,7 @@
-export function rightsPanel({api,t,notice}){
+export function rightsPanel({api,t,notice,refresh}){
   const root=document.querySelector('#rights'),list=document.querySelector('#rights-list'),form=document.querySelector('#rights-form');
   document.querySelector('#export').addEventListener('click',async()=>{try{let next=null,data;const items=[];do{data=await api('export',{resource:next});items.push(...data.items);next=data.next;}while(next);const body=new Blob([JSON.stringify({...data,items,next:null},null,2)],{type:'application/json'}),url=URL.createObjectURL(body),a=document.createElement('a');a.href=url;a.download='ishare-data.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(error){notice(error);}});
-  document.querySelector('#erase').addEventListener('click',async()=>{if(!confirm(t('eraseConfirm')))return;try{await api('erase-account',{body:{}});document.querySelector('#status').textContent=t('erasePending');}catch(error){notice(error);}});
+  document.querySelector('#erase').addEventListener('click',async()=>{if(!confirm(t('eraseConfirm')))return;try{await api('erase-account',{body:{}});await refresh();document.querySelector('#status').textContent=t('erasePending');}catch(error){notice(error);}});
   async function load(){const data=await api('rights');list.replaceChildren();for(const request of data.items){const row=document.createElement('article');row.textContent=request.message+' / '+t(request.state==='open'?'pending':'resolved')+' / '+t('due')+': '+new Date(request.due*1000).toLocaleDateString()+(request.response?' / '+request.response:'');list.append(row);}}
   form.addEventListener('submit',async event=>{event.preventDefault();try{await api('request-right',{body:{kind:form.elements.kind.value,message:form.elements.message.value}});form.reset();await load();}catch(error){notice(error);}});
   return {update(session){root.hidden=!session?.user;if(session?.user)void load().catch(notice);else list.replaceChildren();}};

@@ -1,7 +1,7 @@
+import {quotaCard} from './quota.js';
 import {messages} from './i18n.js';
 import {uploadFile} from './upload.js';
-import {serviceClient,showAccount} from './account.js';
-import {rightsPanel} from './rights.js';
+import {serviceClient,showAccount,bindAccount} from './account.js';
 import {postPreview,emptyState} from './cards.js';
 const form=document.querySelector('#publish-form'),status=document.querySelector('#status'),library=document.querySelector('#library');
 const dictionary=messages(document.documentElement.lang),t=key=>dictionary[key]||key;
@@ -26,22 +26,17 @@ function render(){
 }
 function showQuotas(account){
  const root=document.querySelector('#quota-summary');root.hidden=!account;if(!account)return;
- const format=new Intl.NumberFormat(document.documentElement.lang,{maximumFractionDigits:1});
- for(const [key,field,scale]of [['image','images',1],['video','videoSeconds',60],['daily','dailyUploads',1]]){
-  const used=account.usage[field]||0,limit=account.limits[field],bar=document.querySelector('#'+key+'-quota');
-  const value=format.format(used/scale)+' / '+(limit===null?t('unlimited'):format.format(limit/scale));document.querySelector('#'+key+'-usage').textContent=value;
-  bar.hidden=limit===null;bar.max=Math.max(1,limit||0);bar.value=Math.min(used,bar.max);bar.setAttribute('aria-valuetext',value);
- }
+ const format=new Intl.NumberFormat(document.documentElement.lang,{maximumFractionDigits:1}),cards=document.querySelector('#quota-cards');cards.replaceChildren();
+ for(const [key,field,scale,label]of [['image','images',1,'quotaImages'],['video','videoSeconds',60,'quotaVideos'],['daily','dailyUploads',1,'quotaDaily']])cards.append(quotaCard(key,t(label),(account.usage[field]||0)/scale,account.limits[field]===null?null:account.limits[field]/scale,format,t));
 }
 async function refresh(){
  try{session=await client.read();showAccount(session);showQuotas(session.account);form.querySelector('fieldset').disabled=!session.canPublish||!!controller;form.classList.toggle('publisher-locked',!session.canPublish);const gate=document.querySelector('#publisher-gate'),login=document.querySelector('#publisher-login');gate.hidden=!!session.canPublish;document.querySelector('#gate-title').textContent=t(!session.user?'gateTitle':'gateSuspended');document.querySelector('#gate-message').textContent=t(!session.loginAvailable?'gateUnavailable':!session.user?'gateHint':'gateAccountHint');login.hidden=!!session.user||!session.loginAvailable;
- if(session.user){const data=await api('history');items=data.items;next=data.next;}else{items=[];next=null;}render();document.querySelector('#more').hidden=!next;rights.update(session);
+ if(session.user){const data=await api('history');items=data.items;next=data.next;}else{items=[];next=null;}render();document.querySelector('#more').hidden=!next;
  const accountNotice=document.querySelector('#account-notice');accountNotice.hidden=!session.account?.note&&!session.account?.erasing&&!session.quotaNotice;accountNotice.textContent=session.account?.erasing?t('erasePending'):(session.account?.note||'')+(session.account?.notice?' / '+t('scheduled')+': '+new Date(session.account.notice.effective*1000).toLocaleString():'')+(session.quotaNotice?' / '+session.quotaNotice.note+' / '+t('scheduled')+': '+new Date(session.quotaNotice.effective*1000).toLocaleString():'');
  if(!controller)notify(!session.loginAvailable?'unavailable':!session.user?'loginRequired':!session.canPublish?'unavailable':'available');
  }catch(error){notice(error);}
 }
 function clearDraft(){for(const entry of entries)if(entry.preview)URL.revokeObjectURL(entry.preview);entries=[];resuming=null;postId=crypto.randomUUID().replaceAll('-','');form.reset();preview();}
-document.querySelector('#logout').addEventListener('click',async()=>{try{await api('logout',{body:{}});clearDraft();await refresh();}catch(error){notice(error);}});
 form.elements.file.addEventListener('change',()=>{const files=[...form.elements.file.files];if(resuming){if(files.length!==1||files[0].size!==resuming.bytes||files[0].type!==resuming.mime){notify('differentFile');return;}entries.push({file:files[0],grant:{id:resuming.id},resume:true});resuming=null;}else for(const file of files){if(entries.length>=50){notify('attachmentLimit');break;}if(!entries.some(entry=>entry.file&&entry.file.name===file.name&&entry.file.size===file.size&&entry.file.lastModified===file.lastModified))entries.push({file});}form.elements.file.value='';preview();});
 document.querySelector('#cancel').addEventListener('click',()=>controller?.abort());
 async function durationOf(file){const video=document.createElement('video'),url=URL.createObjectURL(file);try{return await new Promise((resolve,reject)=>{const timeout=setTimeout(()=>{video.src='';reject(new Error('unsupported'));},10000);video.onloadedmetadata=()=>{clearTimeout(timeout);resolve(Math.ceil(video.duration));};video.onerror=()=>{clearTimeout(timeout);reject(new Error('unsupported'));};video.preload='metadata';video.src=url;});}finally{video.src='';URL.revokeObjectURL(url);}}
@@ -60,7 +55,7 @@ form.addEventListener('submit',async event=>{
  await api('create-post',{resource:postId,body:{title:form.elements.caption.value.trim().split('\n')[0].slice(0,100)||t('newPostTitle'),caption:form.elements.caption.value,mediaIds:entries.map(entry=>entry.record.id),listed:form.elements.listed.checked},signal:controller.signal});clearDraft();notify('success');
  }catch(error){notice(error);}finally{controller=null;progress.hidden=true;cancel.hidden=true;const message=status.textContent;await refresh();status.textContent=message;}
 });
-const rights=rightsPanel({api,t,notice});
+bindAccount({client,refresh,notice});
 document.querySelector('#more').addEventListener('click',async()=>{try{const data=await api('history',{resource:next});items.push(...data.items);next=data.next;render();document.querySelector('#more').hidden=!next;}catch(error){notice(error);}});
 const loginError=new URLSearchParams(location.hash.slice(1)).get('login-error');if(loginError){const box=document.querySelector('#login-error'),keys={github_credentials_invalid:'loginCredentials',github_callback_mismatch:'loginCallback',github_code_expired:'loginExpired',expired_oauth_state:'loginExpired',invalid_oauth_state:'loginExpired',github_pkce_failed:'loginExpired',github_email_unverified:'loginEmail',github_identity_unavailable:'loginIdentity',github_exchange_unavailable:'loginExchange',github_exchange_network:'loginNetwork',github_exchange_not_found:'loginEndpoint',github_exchange_denied:'loginDenied',github_exchange_redirected:'loginDenied',github_exchange_rejected:'loginExchange',github_rate_limited:'loginRate',login_cancelled:'loginCancelled'};box.hidden=false;box.textContent=t(keys[loginError]||'loginFailed');box.focus();history.replaceState(null,'',location.pathname);}
 window.addEventListener('pagehide',()=>{for(const entry of entries)if(entry.preview)URL.revokeObjectURL(entry.preview);controller?.abort();},{once:true});void refresh();
