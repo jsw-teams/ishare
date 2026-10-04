@@ -6,6 +6,8 @@ Share images and videos with optional text, a stable share page, raw media links
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/jsw-teams/ishare)
 
+![ishare homepage illustration with its black bear mascot](content/assets/brand/bear-banner.ed22b23efa24f8a8.webp)
+
 ![Publishing and user administration, shown with local demonstration data](docs/images/admin-preview.png)
 
 ```mermaid
@@ -23,13 +25,13 @@ flowchart LR
 
 ## Deployment
 
-The JS.GRIPE operator deploys the existing Worker from the private `jsw-teams/web` repository, root `share.js.gripe`. This public repository distributes complete ishare application source; EdgePress is a pinned dependency, without a copied framework source tree. See the [configuration guide](docs/configuration.md) for Git build settings and runtime Secrets.
+The JS.GRIPE operator deploys the existing Worker from the private `jsw-teams/web` repository, root `/share.js.gripe`. This public repository distributes complete ishare application source; EdgePress is a pinned dependency, without a copied framework source tree. See the [configuration guide](docs/configuration.md) for Git build settings and runtime Secrets.
 
 Use Node 24, run `npm ci`, `npm run build`, `npm test`, then `npm run deploy`. The Cloudflare backend lives in `backend/cloudflare`. One Worker and one SQLite Durable Object hold application metadata; Images and Stream are accessed using API tokens, not resource bindings. They can belong to separate accounts.
 
-Configure Worker Secrets: `IMAGES_ACCOUNT_ID`, `IMAGES_API_TOKEN` with Images Read/Write; `STREAM_ACCOUNT_ID`, `STREAM_API_TOKEN` with Stream Read/Write; and `STREAM_CUSTOMER_CODE`. Only configure the media type you intend to enable. No image variants or image signing key setup is needed: image delivery proxies the authenticated Images blob endpoint. Stream uses a cached token API by default; optional `STREAM_SIGNING_KEY_ID` and base64 JWK `STREAM_SIGNING_KEY` avoid playback token API requests.
+Configure Worker Secrets: `IMAGES_ACCOUNT_ID`, `STREAM_ACCOUNT_ID`, one shared `MEDIA_API_TOKEN` with Images Edit and Stream Edit across the actual resource accounts, and `STREAM_CUSTOMER_CODE`. Only configure the media type you intend to enable. No image variants or image signing key setup is needed: image delivery proxies the authenticated Images blob endpoint. Stream uses a cached token API by default; optional `STREAM_SIGNING_KEY_ID` and base64 JWK `STREAM_SIGNING_KEY` avoid playback token API requests.
 
-GitHub login needs `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and callback `https://share.js.gripe/auth/callback`. Do not reuse or change another service's callback silently. Set `SITE_ORIGIN`, `WEBSITE_ORIGINS`, and your **verified numeric** `OWNER_GITHUB_ID`; this deployment uses `228026986` for the current operator. Forks must replace it. Optional `ADMIN_IDS` delegates moderation without making those accounts unlimited. Empty `PUBLISHER_IDS` allows authenticated users within their quotas.
+GitHub login needs `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and callback `https://share.js.gripe/auth/callback`. Do not reuse or change another service's callback silently. The backend derives its origin from the routed request and does not need origin variables. Public metadata allows cross-site reading; login and writes retain same-origin and CSRF checks. Configure the static canonical URL in `config.yml` and your **verified numeric** `OWNER_GITHUB_ID`; this deployment uses `228026986` for the current operator. Forks must replace it. Optional `ADMIN_IDS` delegates moderation without making those accounts unlimited. Empty `PUBLISHER_IDS` allows authenticated users within their quotas.
 
 `workers.dev` and preview URLs are disabled. The operator configures `share.js.gripe` routes; deployment does not create routes or replace website Workers. Hosted Images/Stream resources require the corresponding Cloudflare plans; the deploy button does not supply free media storage or credentials.
 

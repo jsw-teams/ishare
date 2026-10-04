@@ -2,15 +2,17 @@
 
 ishare 用于公开分享图片、视频和配文。发布者使用 GitHub 登录；访客无需登录即可访问分享页或查看嵌入。内容保留作者与来源署名，不提供付费查看或模糊预览。
 
+![ishare 黑熊吉祥物横幅](../content/assets/brand/bear-banner.ed22b23efa24f8a8.webp)
+
 ![用户管理界面，使用本地演示资料截图](images/admin-preview.png)
 
 ## 部署与资源接入
 
 使用 Node 24，执行 `npm ci`、`npm run build`、`npm test`、`npm run deploy`。后端代码位于 `/backend/cloudflare`。Worker 保存配置并通过一个 SQLite Durable Object 保存业务资料；Images 和 Stream 通过 **API Token** 接入，可以分别使用不同 Cloudflare 账户。没有 Images/Stream 的 Worker binding。
 
-在 Worker 的 Secrets 中分别配置 `IMAGES_ACCOUNT_ID`、`IMAGES_API_TOKEN`（Images 读写权限），以及 `STREAM_ACCOUNT_ID`、`STREAM_API_TOKEN`（Stream 读写权限）、`STREAM_CUSTOMER_CODE`。只配置图片或视频其中一种也可使用。图片代理使用需要 Bearer Token 的原图下载接口，不要求创建专用变体。视频默认在服务端缓存 Stream 播放令牌；高访问量时可额外配置 Stream 签名密钥，避免播放令牌 API 请求。
+在 Worker 的 Secrets 中配置 `IMAGES_ACCOUNT_ID`、`STREAM_ACCOUNT_ID`、`STREAM_CUSTOMER_CODE`，以及共用的 `MEDIA_API_TOKEN`（对实际资源账户授权 Images Edit 和 Stream Edit）。只配置图片或视频其中一种也可使用。图片代理使用需要 Bearer Token 的原图下载接口，不要求创建专用变体。视频默认在服务端缓存 Stream 播放令牌；高访问量时可额外配置 Stream 签名密钥，避免播放令牌 API 请求。
 
-GitHub 登录需要 `GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`，回调地址为 `https://share.js.gripe/auth/callback`。其他服务的 GitHub App 回调不应被自动修改。域名及路由由你自行配置；`workers.dev` 与预览域名关闭。托管 Images/Stream 需要相应的平台计划，一键部署不会提供免费的媒体额度或自动继承其他 Worker 的 Secrets。
+GitHub 登录需要 `GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`，回调地址为 `https://share.js.gripe/auth/callback`。其他服务的 GitHub App 回调不应被自动修改。业务域名从请求自动取得，无需额外域名变量；静态页面网址在 `config.yml` 配置，路由由你自行配置；`workers.dev` 与预览域名关闭。托管 Images/Stream 需要相应的平台计划，一键部署不会提供免费的媒体额度或自动继承其他 Worker 的 Secrets。
 
 ## 配额与后台管理
 

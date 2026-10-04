@@ -1,8 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {handle} from '../backend/cloudflare/service.js';
+import {authorize} from '../backend/cloudflare/auth.js';
 import {repository,environment,media,limits,login,request,now} from './helpers.mjs';
 const ctx={waitUntil:()=>{}};
+test('routed origins work without domain variables, ignore forwarded hosts and keep private CORS closed',async()=>{
+  const {store,database}=repository(),env=environment(store);
+  try{
+    store.reserve(media(),limits,now());store.attach('a'.repeat(32),'provider-id-123456789012345','https://upload.imagedelivery.net/capability',now());store.publish('a'.repeat(32),'42',0,now());
+    const url='https://photos.example/api',headers={'X-Service-Action':'get','X-Service-Resource':'a'.repeat(32),Origin:'https://any-website.example','X-Forwarded-Host':'evil.example'};
+    const response=await handle(new Request(url,{headers}),env,ctx);
+    assert.equal(response.status,200);assert.equal(response.headers.get('Access-Control-Allow-Origin'),'*');
+    assert.equal((await response.json()).shareUrl,'https://photos.example/s/'+'a'.repeat(32));
+    const preflight=await handle(new Request(url,{method:'OPTIONS',headers:{Origin:'https://any-website.example','Access-Control-Request-Method':'GET','Access-Control-Request-Headers':'X-Service-Action, X-Service-Resource'}}),env,ctx);assert.equal(preflight.status,204);
+    const denied=await handle(new Request(url,{method:'OPTIONS',headers:{Origin:'https://any-website.example','Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'X-CSRF-Token'}}),env,ctx);assert.equal(denied.status,403);assert.equal(denied.headers.get('Access-Control-Allow-Origin'),null);
+    const privateRead=await handle(new Request(url,{headers:{Origin:'https://any-website.example','X-Service-Action':'session'}}),env,ctx);assert.equal(privateRead.status,403);assert.equal(privateRead.headers.get('Access-Control-Allow-Origin'),null);
+    const oauth=await authorize(new Request('https://photos.example/auth',{headers:{'X-Forwarded-Host':'evil.example'}}),{...env,GITHUB_CLIENT_ID:'fixture',GITHUB_CLIENT_SECRET:'fixture'},store,now());
+    assert.equal(new URL(oauth.headers.get('Location')).searchParams.get('redirect_uri'),'https://photos.example/auth/callback');
+  }finally{database.close();}
+});
 test('authentication, CSRF, publisher permissions and ownership protect privileged requests',async()=>{
   const {store,database}=repository(),env=environment(store);let calls=0;const network=async()=>{calls++;throw Error('must not call');};
   try{
@@ -20,7 +36,7 @@ test('authentication, CSRF, publisher permissions and ownership protect privileg
 test('direct upload uses the resource account token, private uploads and opaque application IDs',async()=>{
   const {store,database}=repository(),env=environment(store),owner=await login(store),calls=[];
   const network=async(url,options)=>{
-    calls.push({url,options});assert.ok(url.includes('/accounts/'+env.IMAGES_ACCOUNT_ID+'/'));assert.equal(options.headers.Authorization,'Bearer '+env.IMAGES_API_TOKEN);
+    calls.push({url,options});assert.ok(url.includes('/accounts/'+env.IMAGES_ACCOUNT_ID+'/'));assert.equal(options.headers.Authorization,'Bearer '+env.MEDIA_API_TOKEN);
     assert.equal(options.body.get('requireSignedURLs'),'true');assert.equal(options.body.get('creator'),'ishare:42');assert.equal(options.body.has('id'),false);
     return Response.json({success:true,result:{id:'provider-id-123456789012345',uploadURL:'https://upload.imagedelivery.net/capability'}});
   };
@@ -40,7 +56,7 @@ test('unknown upstream outcomes retain reservations and are never silently retri
 test('public metadata and standard oEmbed preserve attribution without provider URLs or fetch-based discovery',async()=>{
   const {store,database}=repository(),env=environment(store);try{
     store.reserve(media(),limits,now());store.attach('a'.repeat(32),'provider-id-123456789012345','https://upload.imagedelivery.net/capability',now());store.publish('a'.repeat(32),'42',0,now());
-    const response=await handle(request('get',{resource:'a'.repeat(32),origin:'https://website.example'}),env,ctx);assert.equal(response.status,200);assert.equal(response.headers.get('Access-Control-Allow-Origin'),'https://website.example');
+    const response=await handle(request('get',{resource:'a'.repeat(32),origin:'https://website.example'}),env,ctx);assert.equal(response.status,200);assert.equal(response.headers.get('Access-Control-Allow-Origin'),'*');
     const body=await response.text();assert.doesNotMatch(body,/provider-id|imagedelivery|API_TOKEN|upload_url/);assert.match(body,/publisher/);
     const embed=await handle(new Request('https://share.js.gripe/oembed?url='+encodeURIComponent('https://share.js.gripe/s/'+'a'.repeat(32))+'&maxwidth=400'),env,ctx);const data=await embed.json();assert.equal(data.version,'1.0');assert.equal(data.width,400);assert.match(data.html,/share.js.gripe\/embed\//);assert.doesNotMatch(data.html,/<script>|imagedelivery/);
     assert.equal((await handle(new Request('https://share.js.gripe/oembed?url=https://169.254.169.254/latest'),env,ctx)).status,404);

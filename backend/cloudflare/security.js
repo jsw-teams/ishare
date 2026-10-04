@@ -12,6 +12,8 @@ export function origin(value) {
   try { const url=new URL(value); if(url.protocol==='https:'&&!url.username&&!url.password&&url.pathname==='/'&&!url.search&&!url.hash)return url.origin; } catch {}
   fail('invalid_origin',503);
 }
+// Cloudflare's routed request supplies the origin. Never trust forwarded host headers.
+export const requestOrigin = request => origin(new URL(request.url).origin);
 export function https(value, max=2048) {
   if(typeof value!=='string'||value.length>max||/[\x00-\x20\x7f]/.test(value))fail('invalid_url');
   try { const url=new URL(value);if(url.protocol==='https:'&&!url.username&&!url.password)return url; } catch {}

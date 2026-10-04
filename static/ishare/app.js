@@ -20,7 +20,7 @@ function button(label,action){const node=document.createElement('button');node.t
 function linkField(card,label,value){const row=document.createElement('label'),name=document.createElement('span'),input=document.createElement(label==='embed'?'textarea':'input');name.textContent=t(label);input.readOnly=true;input.value=value;if(label==='embed')input.rows=3;row.append(name,input,button('copy',async()=>{try{await navigator.clipboard.writeText(value);notify('copied');}catch{input.focus();input.select();}}));card.append(row);}
 function render(records){
   const items=records;
-  library.replaceChildren();if(!items.length){const p=document.createElement('p');p.textContent=t('empty');library.append(p);return;}
+  library.replaceChildren();if(!items.length){const box=document.createElement('div'),img=document.createElement('img'),p=document.createElement('p');box.className='empty-library';img.src=library.dataset.emptyMascot;img.alt='';img.width=135;img.height=135;p.textContent=t('empty');box.append(img,p);library.append(box);return;}
   for(const item of items){const card=document.createElement('article'),heading=document.createElement('h3');heading.textContent=item.title;card.append(heading);
     if(item.state==='published'){
       if(item.kind==='image'){const img=document.createElement('img');img.src='/i/'+item.id+'/thumbnail';img.alt=item.title;img.loading='lazy';card.append(img);}
@@ -47,6 +47,7 @@ async function refresh(){
   }catch(error){notice(error);}
 }
 document.querySelector('#logout').addEventListener('click',async()=>{try{await api('logout',{body:{}});resuming=null;await refresh();}catch(error){notice(error);}});
+form.elements.file.addEventListener('change',()=>{const label=document.querySelector('#selected-file'),file=form.elements.file.files[0];label.hidden=!file;label.textContent=file?t('selectedFile')+': '+file.name:'';});
 document.querySelector('#cancel').addEventListener('click',()=>controller?.abort());
 async function durationOf(file){const video=document.createElement('video'),url=URL.createObjectURL(file);try{return await new Promise((resolve,reject)=>{const timeout=setTimeout(()=>{video.src='';reject(new Error('unsupported'));},10000);video.onloadedmetadata=()=>{clearTimeout(timeout);resolve(Math.ceil(video.duration));};video.onerror=()=>{clearTimeout(timeout);reject(new Error('unsupported'));};video.preload='metadata';video.src=url;});}finally{video.src='';URL.revokeObjectURL(url);}}
 async function publish(id,signal){for(let attempt=0;attempt<12;attempt++){try{return await api('publish',{resource:id,body:{},signal});}catch(error){if(error.message!=='processing')throw error;notify('processing');await new Promise(resolve=>setTimeout(resolve,3000));if(signal?.aborted)throw new DOMException('Paused','AbortError');}}throw new Error('processing');}
@@ -62,7 +63,7 @@ form.addEventListener('submit',async event=>{
     else grant=await api('create-upload',{body:{kind,title:form.elements.title.value,caption:form.elements.caption.value,sourceUrl:form.elements.sourceUrl.value,sourceName:form.elements.sourceName.value,bytes:file.size,mime:file.type,duration},signal:controller.signal});
     resuming={id:grant.id,bytes:file.size,mime:file.type};notify('progress');
     await uploadFile(file,grant,value=>{progress.value=value;status.textContent=t('progress')+' '+Math.round(value*100)+'%';},{signal:controller.signal});
-    await publish(grant.id,controller.signal);resuming=null;form.reset();notify('success');
+    await publish(grant.id,controller.signal);resuming=null;form.reset();document.querySelector('#selected-file').hidden=true;notify('success');
   }catch(error){notice(error);}finally{controller=null;progress.hidden=true;cancel.hidden=true;const message=status.textContent;await refresh();status.textContent=message;}
 });
 const management=adminPanel({api,t,notice,refresh}),rights=rightsPanel({api,t,notice});

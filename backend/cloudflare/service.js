@@ -1,4 +1,4 @@
-import { ServiceError, fail, origin, https, text, number, id, digest, jsonBody, json } from './security.js';
+import { ServiceError, fail, requestOrigin, https, text, number, id, digest, jsonBody, json } from './security.js';
 import { authReady, readSession, requireSite, requireCsrf, authorize, callback, logout } from './auth.js';
 import { provider, resourceConfiguration } from './provider.js';
 import { publicRecord, oembed, shareId, renderPage } from './views.js';
@@ -17,16 +17,15 @@ const width=value=>value===null?640:number(value,640,1920);
 const height=value=>value===null?480:number(value,480,1440);
 
 export async function handle(request,env,context,{requestProvider=fetch,requestGithub=fetch,requestUpstream=fetch}={}) {
-  const url=new URL(request.url),site=origin(env.SITE_ORIGIN),now=Math.floor(Date.now()/1000);
+  const url=new URL(request.url),site=requestOrigin(request),now=Math.floor(Date.now()/1000);
   const store=rpcStore(env);
-  const incoming=request.headers.get('Origin');
-  const publicOrigins=new Set([site,...(env.WEBSITE_ORIGINS||'').split(',').filter(Boolean).map(origin)]);
-  const cors=incoming&&publicOrigins.has(incoming)?{'Access-Control-Allow-Origin':incoming,Vary:'Origin'}:{};
+  // Public metadata is shareable; private actions remain same-origin and never receive CORS.
+  const cors={'Access-Control-Allow-Origin':'*'};
   try {
-    if(url.origin!==site)fail('not_found',404);
     if(request.method==='OPTIONS'&&url.pathname==='/api') {
-      if(!incoming||!publicOrigins.has(incoming))fail('forbidden_origin',403);
-      return new Response(null,{status:204,headers:{...cors,'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type, X-Service-Action, X-Service-Resource, X-CSRF-Token','Access-Control-Max-Age':'600'}});
+      const requested=(request.headers.get('Access-Control-Request-Headers')||'').split(',').map(value=>value.trim().toLowerCase()).filter(Boolean);
+      if(request.headers.get('Access-Control-Request-Method')!=='GET'||requested.some(value=>!['x-service-action','x-service-resource'].includes(value)))fail('forbidden_origin',403);
+      return new Response(null,{status:204,headers:{...cors,'Access-Control-Allow-Methods':'GET','Access-Control-Allow-Headers':'X-Service-Action, X-Service-Resource','Access-Control-Max-Age':'600'}});
     }
     if(url.pathname==='/auth'||url.pathname==='/auth/callback'){
       if(request.method!=='GET')fail('method_not_allowed',405);
@@ -40,7 +39,7 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     if(match){
       if(!['GET','HEAD'].includes(request.method))fail('method_not_allowed',405);if(url.search)fail('invalid_query');
       const item=await store.publicGet(match[2],env.OWNER_GITHUB_ID,now);
-      if(match[1]==='s'||match[1]==='embed'){if(match[3])fail('not_found',404);return await renderPage(item,env,match[1]==='embed');}
+      if(match[1]==='s'||match[1]==='embed'){if(match[3])fail('not_found',404);return await renderPage(item,env,site,match[1]==='embed');}
       if((match[1]==='i')!==(item.kind==='image')||!match[3])fail('not_found',404);
       return await deliver(request,env,item,match[3],store,context,{requestUpstream,requestProvider});
     }
@@ -48,40 +47,39 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
       if(request.method!=='GET')fail('method_not_allowed',405);
       for(const name of url.searchParams.keys())if(!['url','format','maxwidth','maxheight'].includes(name))fail('invalid_query');
       if(url.searchParams.has('format')&&url.searchParams.get('format')!=='json')fail('unsupported_format',501);
-      const item=await store.publicGet(shareId(url.searchParams.get('url'),env),env.OWNER_GITHUB_ID,now);
-      return json(oembed(item,env,width(url.searchParams.get('maxwidth')),height(url.searchParams.get('maxheight'))),200,{'Cache-Control':'public, max-age=30',...cors});
+      const item=await store.publicGet(shareId(url.searchParams.get('url'),site),env.OWNER_GITHUB_ID,now);
+      return json(oembed(item,site,width(url.searchParams.get('maxwidth')),height(url.searchParams.get('maxheight'))),200,{'Cache-Control':'public, max-age=30',...cors});
     }
     if(url.pathname!=='/api')fail('not_found',404);
     if(url.search)fail('invalid_query');
     const action=request.headers.get('X-Service-Action');if(!Object.hasOwn(methodFor,action||''))fail('unknown_action',404);
     if(request.method!==methodFor[action])fail('method_not_allowed',405);
-    if(incoming&&!publicOrigins.has(incoming))fail('forbidden_origin',403);
-    if(privateActions.has(action))requireSite(request,env);
+    if(privateActions.has(action))requireSite(request);
     const session=privateActions.has(action)?await readSession(request,store,now):null;
     const base=defaults(env),account=session?await store.account(session.user.id,base,env.OWNER_GITHUB_ID,now):null;
     if(action==='session')return json({user:session?.user||null,csrf:session?.csrf||null,loginAvailable:authReady(env),canPublish:!!session&&allowedPublisher(env,session.user)&&!account.blocked&&!account.sharingBlocked,isAdmin:admin(env,session?.user),account,imagesAvailable:ready(env,'image'),videosAvailable:ready(env,'video'),maxVideoDuration:account?.limits.videoDuration??36000,maxVideoBytes:account?.limits.videoBytes??29_999_999_999});
     if(action==='get'||action==='oembed'){
-      const key=action==='oembed'?shareId(resource(request),env):id(resource(request));
-      const item=await store.publicGet(key,env.OWNER_GITHUB_ID,now);return json(action==='get'?publicRecord(item,env):oembed(item,env),200,cors);
+      const key=action==='oembed'?shareId(resource(request),site):id(resource(request));
+      const item=await store.publicGet(key,env.OWNER_GITHUB_ID,now);return json(action==='get'?publicRecord(item,site):oembed(item,site),200,cors);
     }
     if(!session)fail('login_required',401);
     if(action.startsWith('admin-')){
       if(!admin(env,session.user))fail('admin_required',403);
       if(action==='admin-users')return json(await store.users(resource(request),base,env.OWNER_GITHUB_ID,now));
-      if(action==='admin-reconcile'){if(session.user.id!==env.OWNER_GITHUB_ID)fail('owner_required',403);requireCsrf(request,env,session);const body=await jsonBody(request);if(body.confirmedAbsent!==true)fail('confirmation_required');return json(await store.reconcile(id(resource(request)),session.user.id,text(body.note,500),now));}
+      if(action==='admin-reconcile'){if(session.user.id!==env.OWNER_GITHUB_ID)fail('owner_required',403);requireCsrf(request,session);const body=await jsonBody(request);if(body.confirmedAbsent!==true)fail('confirmation_required');return json(await store.reconcile(id(resource(request)),session.user.id,text(body.note,500),now));}
       if(action==='admin-audit')return json({items:await store.audit()});
       if(action==='admin-rights')return json({items:await store.rightsQueue()});
-      if(action==='admin-resolve-right'){requireCsrf(request,env,session);const body=await jsonBody(request);await store.resolveRight(resource(request),text(body.response,2000),session.user.id,now);return json({ok:true});}
-      if(action==='admin-list'){const data=await store.list(accountId(resource(request)));return json({...data,items:data.items.map(item=>publicRecord(item,env))});}
+      if(action==='admin-resolve-right'){requireCsrf(request,session);const body=await jsonBody(request);await store.resolveRight(resource(request),text(body.response,2000),session.user.id,now);return json({ok:true});}
+      if(action==='admin-list'){const data=await store.list(accountId(resource(request)));return json({...data,items:data.items.map(item=>publicRecord(item,site))});}
       const target=accountId(resource(request));
       if(action==='admin-user')return json(await store.account(target,base,env.OWNER_GITHUB_ID,now));
-      requireCsrf(request,env,session);const change=changes(await jsonBody(request));await store.setAccount(target,change,session.user.id,env.OWNER_GITHUB_ID,now,base);return json(await store.account(target,base,env.OWNER_GITHUB_ID,now));
+      requireCsrf(request,session);const change=changes(await jsonBody(request));await store.setAccount(target,change,session.user.id,env.OWNER_GITHUB_ID,now,base);return json(await store.account(target,base,env.OWNER_GITHUB_ID,now));
     }
     if(action==='rights')return json({items:await store.rights(session.user.id)});
-    if(action==='export'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.list(session.user.id,cursor);return json({identity:session.user,account,requests:await store.rights(session.user.id),...data,items:data.items.map(item=>publicRecord(item,env))});}
-    if(action==='list'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.list(session.user.id,cursor);return json({...data,items:data.items.map(item=>publicRecord(item,env))});}
+    if(action==='export'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.list(session.user.id,cursor);return json({identity:session.user,account,requests:await store.rights(session.user.id),...data,items:data.items.map(item=>publicRecord(item,site))});}
+    if(action==='list'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.list(session.user.id,cursor);return json({...data,items:data.items.map(item=>publicRecord(item,site))});}
     if(action==='get-upload'){if(account.blocked||account.sharingBlocked)fail('publishing_suspended',403);const item=await store.get(id(resource(request)));if(!item||item.owner!==session.user.id||item.state!=='uploading')fail('not_found',404);return json({id:item.id,bytes:item.bytes,mime:item.mime,uploadUrl:item.upload_url,protocol:item.kind==='video'?'tus':'post'});}
-    requireCsrf(request,env,session);
+    requireCsrf(request,session);
     if(action==='logout')return await logout(request,store);
     if(action==='erase-account')return json(await store.erase(session.user.id,now),202);
     const body=await jsonBody(request),upstream=provider(env,requestProvider);
@@ -104,8 +102,8 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     if(!item||(item.owner!==session.user.id&&!(action==='delete'&&admin(env,session.user))))fail('not_found',404);
     if(action==='publish'){
       if(!allowedPublisher(env,session.user)||account.blocked||account.sharingBlocked)fail('publishing_suspended',403);
-      if(item.state==='published')return json(publicRecord(item,env));if(item.state!=='uploading')fail('invalid_state',409);
-      const duration=await upstream.ready(item);return json(publicRecord(await store.publish(mediaId,session.user.id,duration,now,env.OWNER_GITHUB_ID),env));
+      if(item.state==='published')return json(publicRecord(item,site));if(item.state!=='uploading')fail('invalid_state',409);
+      const duration=await upstream.ready(item);return json(publicRecord(await store.publish(mediaId,session.user.id,duration,now,env.OWNER_GITHUB_ID),site));
     }
     if(action==='delete'){
       if(item.state==='uncertain')fail('manual_reconciliation_required',409);
@@ -113,5 +111,5 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
       await upstream.remove(marked);await store.deleted(mediaId);return json({ok:true});
     }
     fail('unknown_action',404);
-  } catch(error) {return json({error:error instanceof ServiceError?error.message:'service_unavailable'},error instanceof ServiceError?error.status:503,cors);}
+  } catch(error) {return json({error:error instanceof ServiceError?error.message:'service_unavailable'},error instanceof ServiceError?error.status:503);}
 }

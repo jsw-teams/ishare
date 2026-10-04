@@ -1,5 +1,5 @@
 ---
-title: ishare
+title: Share images and videos
 lang: en
 homepage: true
 blocks:

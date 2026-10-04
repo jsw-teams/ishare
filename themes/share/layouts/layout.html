@@ -1,1 +1,27 @@
-<html lang="{{site.language}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="{{page.description}}"><title>{{page.title}}</title><link rel="canonical" href="{{page.canonical}}"><link rel="stylesheet" href="{{site.stylesheet}}"><script type="application/ld+json">{{{page.jsonLd}}}</script></head><body><a class="skip" href="#main">{{site.skipToContent}}</a><header class="topbar"><a class="brand" href="/">ishare</a><nav aria-label="{{site.mainNavigationLabel}}">{{{site.primaryNavigationHtml}}}</nav><div class="actions">{{{site.localeLinksHtml}}}<a class="button" id="login" href="/auth" data-i18n="login">Sign in with GitHub</a><button id="logout" hidden data-i18n="logout">Sign out</button><span id="identity"></span></div></header><main id="main">{{{page.content}}}</main><footer class="site-footer"><nav aria-label="{{site.footerNavigationLabel}}">{{{site.footerNavigationHtml}}}</nav><p>{{site.footer}}</p></footer><script defer src="/edgepress/language-select.js"></script></body></html>
+<html lang="{{site.language}}">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="{{page.description}}"><title>{{page.title}}</title>
+  <link rel="canonical" href="{{page.canonical}}"><link rel="stylesheet" href="{{site.stylesheet}}">
+  <link rel="icon" type="image/png" sizes="32x32" href="/brand/bear-favicon.52039e84b2f38015.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/brand/bear-icon.3754101e8d6380da.png">
+  <meta name="theme-color" content="#1f4938">
+  <meta property="og:site_name" content="ishare"><meta property="og:image" content="{{site.url}}/brand/bear-banner.ed22b23efa24f8a8.webp">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">{{{page.jsonLd}}}</script>
+</head>
+<body>
+  <a class="skip" href="#main">{{site.skipToContent}}</a>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="ishare"><img src="/brand/bear-icon.3754101e8d6380da.png" alt="" width="40" height="40"><span>ishare</span></a>
+    <nav aria-label="{{site.mainNavigationLabel}}">{{{site.primaryNavigationHtml}}}</nav>
+    <div class="actions">{{{site.localeLinksHtml}}}<a class="button button-primary" id="login" href="/auth" data-i18n="login">Sign in with GitHub</a><button id="logout" hidden data-i18n="logout">Sign out</button><span id="identity"></span></div>
+  </header>
+  <main id="main">{{{page.content}}}</main>
+  <footer class="site-footer">
+    <div class="footer-brand"><a class="brand" href="/"><img src="/brand/bear-favicon.52039e84b2f38015.png" alt="" width="32" height="32"><span>ishare</span></a><p data-i18n="footerHint">A little space for what you want to share.</p></div>
+    <nav aria-label="{{site.footerNavigationLabel}}">{{{site.footerNavigationHtml}}}</nav>
+  </footer>
+  <script defer src="/edgepress/language-select.js"></script>
+</body>
+</html>

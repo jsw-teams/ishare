@@ -6,14 +6,14 @@ function translate(html,locale){const text=messages(locale);return html.replace(
 export default function application(api){
   api.registerFilter('html:beforeLayout',async(html,{page,config})=>{
     if(page.urlPath===localizedUrl(config,page.locale,''))return translate(await readFile(new URL('./application.html',import.meta.url),'utf8'),page.locale);
-    if(page.urlPath===localizedUrl(config,page.locale,'privacy/'))return readFile(new URL('./privacy.html',import.meta.url),'utf8');
     return html;
   });
-  api.registerFilter('html:afterLayout',(html,{page})=>{
+  api.registerFilter('html:afterLayout',(html,{page,config})=>{
     html=translate(html,page.locale);
+    html=html.replaceAll('class="brand" href="/"','class="brand" href="'+localizedUrl(config,page.locale,'')+'"');
     if(html.includes('id="publish-form"'))return html.replace('</body>','<script type="module" src="/ishare/app.js"></script></body>');
     // Privacy pages do not initialize the publishing application or call /api.
-    return html.replace(/<a class="button" id="login"[\s\S]*?<span id="identity"><\/span>/,'');
+    return html.replace(/<a class="button button-primary" id="login"[\s\S]*?<span id="identity"><\/span>/,'');
   });
   api.registerGenerator('ishare-assets',async({config,renderLayout})=>[
     {path:'assets.json',contentType:'application/json',body:JSON.stringify({app:config.assetManifest['/ishare/app.js'],player:config.assetManifest['/ishare/player.js'],style:config.assetManifest['/style.css'],shell:'/share-shell.html'})},

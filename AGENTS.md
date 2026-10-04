@@ -15,3 +15,6 @@
 - dist and .site-static are generated. Source UI fragments are in plugins/application; browser logic lives in static/ishare. Keep nav/footer, language switching, keyboard focus and immutable asset hashes.
 
 - The operator Worker deploys from jsw-teams/web, root share.js.gripe. The public jsw-teams/ishare repository is a source mirror for distribution, not the operator deployment source. Keep Secrets only in Cloudflare.
+
+- Derive business origins from the routed request URL, never forwarded-host headers or required origin variables. Public get/oEmbed metadata supports credential-free CORS; private reads and writes keep same-origin and CSRF checks. One MEDIA_API_TOKEN accesses both separately configured resource accounts.
+- Operator build root is /share.js.gripe in jsw-teams/web. This site enables no general media-platform consent services. Other web/EdgePress sites preset only X and YouTube; do not restore broad platform lists.

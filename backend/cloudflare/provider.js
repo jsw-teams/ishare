@@ -4,7 +4,7 @@ const providerId = value => typeof value==='string' && /^[a-zA-Z0-9-]{20,64}$/.t
 
 export function resourceConfiguration(env,kind) {
   const p=kind==='image'?'IMAGES':'STREAM';
-  const account=env[p+'_ACCOUNT_ID'],token=env[p+'_API_TOKEN'];
+  const account=env[p+'_ACCOUNT_ID'],token=env.MEDIA_API_TOKEN;
   if(!/^[a-f0-9]{32}$/.test(account||'')||typeof token!=='string'||token.length<10)fail('service_unavailable',503);
   if(kind==='video'&&!/^[a-z0-9]{4,100}$/.test(env.STREAM_CUSTOMER_CODE||''))fail('service_unavailable',503);
   if(kind==='video'&&!!env.STREAM_SIGNING_KEY!==!!env.STREAM_SIGNING_KEY_ID)fail('service_unavailable',503);

@@ -60,10 +60,10 @@ export async function deliver(request,env,item,resource,store,context,{requestUp
   if(item.kind==='image'||upstream.ishareSeconds>0)await store.delivery(item.owner,item.kind,item.kind==='image'?1:upstream.ishareSeconds,now);
   // Internal cache identities omit expiring signatures; upstream content is immutable per media ID.
   const path=item.kind==='video'?upstream.pathname.split('/').slice(2).join('/')+'?'+upstream.searchParams.toString():'blob';
-  const cacheKey=new Request(new URL('/__ishare-cache/'+item.id+'/'+await digest(path),env.SITE_ORIGIN));
+  const cacheKey=new Request(new URL('/__ishare-cache/'+item.id+'/'+await digest(path),request.url));
   if(!manifest&&!range&&cache){const hit=await cache.match(cacheKey);if(hit)return new Response(request.method==='HEAD'?null:hit.body,{status:hit.status,headers:hit.headers});}
   let response;
-  try{response=await requestUpstream(upstream,{method:'GET',headers:{...(item.kind==='image'?{Authorization:'Bearer '+env.IMAGES_API_TOKEN}:{}),...(range?{Range:range}:{})},redirect:'manual',signal:AbortSignal.timeout(20000)});}catch{fail('media_unavailable',503);}
+  try{response=await requestUpstream(upstream,{method:'GET',headers:{...(item.kind==='image'?{Authorization:'Bearer '+env.MEDIA_API_TOKEN}:{}),...(range?{Range:range}:{})},redirect:'manual',signal:AbortSignal.timeout(20000)});}catch{fail('media_unavailable',503);}
   if(![200,206].includes(response.status)){await response.body?.cancel();fail('media_unavailable',response.status===404?404:502);}
   const mime=(response.headers.get('content-type')||'').split(';')[0].toLowerCase();
   if(item.kind==='image'&&!/^image\/(jpeg|png|webp|avif|gif)$/.test(mime)){await response.body?.cancel();fail('invalid_upstream',502);}

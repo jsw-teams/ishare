@@ -7,8 +7,6 @@
   "preview_urls": false,
   "keep_vars": true,
   "vars": {
-    "SITE_ORIGIN": "https://share.js.gripe",
-    "WEBSITE_ORIGINS": "https://js.gripe,https://connect.js.gripe",
     "OWNER_GITHUB_ID": "228026986",
     "MAX_IMAGES": "10000",
     "MAX_VIDEO_SECONDS": "36000",
