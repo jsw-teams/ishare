@@ -18,6 +18,7 @@ export class Repository {
     CREATE INDEX IF NOT EXISTS posts_feed ON posts(state,listed,created);
     CREATE INDEX IF NOT EXISTS posts_owner ON posts(owner,state,created);
     CREATE TABLE IF NOT EXISTS attachments (post_id TEXT NOT NULL, media_id TEXT NOT NULL UNIQUE, position INTEGER NOT NULL, PRIMARY KEY(post_id,position));
+    CREATE TABLE IF NOT EXISTS video_covers (media_id TEXT PRIMARY KEY, body BLOB NOT NULL, mime TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS auth (id TEXT PRIMARY KEY, verifier TEXT NOT NULL, expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, identity TEXT NOT NULL, csrf TEXT NOT NULL, expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS limits (id TEXT PRIMARY KEY, count INTEGER NOT NULL, expires INTEGER NOT NULL);
@@ -40,12 +41,13 @@ export class Repository {
     const next={defaults:change.defaults,shared:reducing&&!change.urgent?current.shared:change.shared,pending:reducing&&!change.urgent?{shared:change.shared,effective:now+604800}:null,note:change.note};
     this.sql.exec("INSERT INTO settings VALUES ('quotas',?) ON CONFLICT(id) DO UPDATE SET value=excluded.value",JSON.stringify(next));this.sql.exec('INSERT INTO audit(actor,target,changes,created) VALUES (?,?,?,?)',actor,'site',JSON.stringify(next),now);return next;
   });}
-  post(id){const row=this.one('SELECT * FROM posts WHERE id=?',id);return row?{...row,kind:'post',listed:!!row.listed,media:[...this.sql.exec("SELECT m.* FROM attachments a JOIN media m ON m.id=a.media_id WHERE a.post_id=? AND m.state NOT IN ('deleted','failed') ORDER BY a.position",id)]}:null;}
+  post(id){const row=this.one('SELECT * FROM posts WHERE id=?',id);return row?{...row,kind:'post',listed:!!row.listed,media:[...this.sql.exec("SELECT m.* FROM attachments a JOIN media m ON m.id=a.media_id WHERE a.post_id=? AND m.state NOT IN ('deleted','failed') ORDER BY CASE m.kind WHEN 'video' THEN 0 ELSE 1 END,a.position",id)]}:null;}
   publicShare(id,ownerId,now){const post=this.post(id);if(!post)return this.publicGet(id,ownerId,now);if(post.state!=='published')fail('not_found',404);const row=this.activate(post.owner,now);if(row?.erasing||post.owner!==ownerId&&JSON.parse(row?.policy||'{}').sharingBlocked)fail('sharing_suspended',403);return {...post,media:post.media.filter(item=>item.state==='published')};}
   createPost(data,ownerId,now){return this.atomic(()=>{
+    const media=new Map(data.mediaIds.map(key=>[key,this.get(key)]));data={...data,mediaIds:[...data.mediaIds].sort((a,b)=>Number(media.get(b)?.kind==='video')-Number(media.get(a)?.kind==='video'))};
     if(this.one('SELECT 1 AS cancelled FROM settings WHERE id=?','cancelled-post:'+data.id))fail('post_cancelled',409);const existing=this.post(data.id);if(existing){if(existing.owner!==data.owner||existing.state!=='published'||existing.title!==data.title||existing.caption!==data.caption||existing.source_url!==data.sourceUrl||existing.source_name!==data.sourceName||existing.listed!==data.listed||JSON.stringify(existing.media.map(item=>item.id))!==JSON.stringify(data.mediaIds))fail('post_conflict',409);return existing;}
     this.assertPublisher(data.owner,ownerId);if(data.mediaIds.length>50||new Set(data.mediaIds).size!==data.mediaIds.length||!data.mediaIds.length&&!data.caption.trim())fail('invalid_post');
-    for(const key of data.mediaIds){const media=this.get(key);if(!media||media.owner!==data.owner||media.state!=='published'||this.one('SELECT post_id FROM attachments WHERE media_id=?',key))fail('invalid_attachment',409);}
+    for(const key of data.mediaIds){const item=media.get(key);if(!item||item.owner!==data.owner||item.state!=='published'||this.one('SELECT post_id FROM attachments WHERE media_id=?',key))fail('invalid_attachment',409);}
     this.sql.exec("INSERT INTO posts VALUES (?,?,?,?,?,?,?,?,'published',?,?)",data.id,data.owner,JSON.stringify(data.author),data.title,data.caption,data.sourceUrl,data.sourceName,Number(data.listed),now,now);
     data.mediaIds.forEach((key,index)=>this.sql.exec('INSERT INTO attachments VALUES (?,?,?)',data.id,key,index));return this.post(data.id);
   });}
@@ -57,6 +59,8 @@ export class Repository {
   key() { return this.atomic(()=>{let key=this.one("SELECT value FROM settings WHERE id='delivery-key'")?.value;if(!key){key=random();this.sql.exec("INSERT INTO settings VALUES ('delivery-key',?)",key);}return key;}); }
   videoToken(id,now) {const row=this.one('SELECT value FROM settings WHERE id=?','video:'+id);if(!row)return null;const value=JSON.parse(row.value);return value.expires>now?value.token:null;}
   saveVideoToken(id,token,expires) {this.sql.exec('INSERT INTO settings VALUES (?,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value','video:'+id,JSON.stringify({token,expires}));}
+  videoCover(id){const row=this.one('SELECT body,mime FROM video_covers WHERE media_id=?',id);return row?{body:new Uint8Array(row.body),mime:row.mime}:null;}
+  saveVideoCover(id,body,mime){const item=this.get(id);if(!item||item.kind!=='video'||item.state!=='published')fail('not_found',404);if(!(body instanceof Uint8Array)||body.byteLength<1||body.byteLength>2_000_000||mime!=='image/jpeg')fail('invalid_cover');this.sql.exec('INSERT INTO video_covers VALUES (?,?,?) ON CONFLICT(media_id) DO NOTHING',id,body.buffer.slice(body.byteOffset,body.byteOffset+body.byteLength),mime);return this.videoCover(id);}
   rate(key,max,now,period=600) {
     return this.atomic(()=>{const k=key+':'+Math.floor(now/period);const row=this.one('SELECT count FROM limits WHERE id=?',k);if((row?.count||0)>=max)fail('rate_limited',429);this.sql.exec('INSERT INTO limits VALUES (?,1,?) ON CONFLICT(id) DO UPDATE SET count=count+1',k,now+period*2);});
   }
@@ -116,7 +120,7 @@ export class Repository {
   }
   list(owner,cursor='') {const rows=[...this.sql.exec("SELECT * FROM media WHERE owner=? AND id>? AND state NOT IN ('deleted','failed') ORDER BY id LIMIT 51",owner,cursor)];return {items:rows.slice(0,50),next:rows.length>50?rows[49].id:null};}
 
-  deleted(id,scrub=false) { this.sql.exec("UPDATE media SET state='deleted',upload_url=NULL,provider_id=NULL WHERE id=? AND state='deleting'",id);if(scrub)this.sql.exec("UPDATE media SET title='',caption='',source_url='',source_name='',author='{}' WHERE id=? AND state='deleted'",id);this.sql.exec('DELETE FROM settings WHERE id IN (?,?)','video:'+id,'removal:'+id); }
+  deleted(id,scrub=false) { this.sql.exec("UPDATE media SET state='deleted',upload_url=NULL,provider_id=NULL WHERE id=? AND state='deleting'",id);if(scrub)this.sql.exec("UPDATE media SET title='',caption='',source_url='',source_name='',author='{}' WHERE id=? AND state='deleted'",id);this.sql.exec('DELETE FROM settings WHERE id IN (?,?)','video:'+id,'removal:'+id);this.sql.exec('DELETE FROM video_covers WHERE media_id=?',id); }
   cleanup(now) {
     return this.atomic(()=>{
       this.sql.exec("UPDATE posts SET state='deleting',listed=0 WHERE owner IN (SELECT id FROM users WHERE erasing=1)");

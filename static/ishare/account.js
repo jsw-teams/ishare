@@ -5,7 +5,7 @@ export function serviceClient(page=''){
   const headers={'X-Service-Action':action};if(resource)headers['X-Service-Resource']=encodeURIComponent(resource);
   if(body){headers['Content-Type']='application/json';headers['X-CSRF-Token']=session?.csrf||'';}
   const response=await fetch('/api',{method:body?'POST':'GET',headers,body:body?JSON.stringify(body):undefined,credentials:'same-origin',cache:'no-store',redirect:'error',signal});
-  const data=await response.json();if(!response.ok){const error=new Error(data.error||'request_failed');error.status=response.status;throw error;}return data;
+  const data=await response.json();if(!response.ok){const error=new Error(data.error||'request_failed');error.status=response.status;if(['upload_destination','upload_allocation','provider_api'].includes(data.stage))error.stage=data.stage;if(Number.isInteger(data.upstreamStatus))error.upstreamStatus=data.upstreamStatus;throw error;}return data;
  }
  function request(action,options={}){if(options.body||options.signal)return transport(action,options);const key=JSON.stringify([action,options.resource||'']);if(!pending.has(key))pending.set(key,transport(action,options).finally(()=>pending.delete(key)));return pending.get(key);}
  return {request,async read(){session=await request('session',{resource:page});return session;}};

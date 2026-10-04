@@ -21,6 +21,12 @@ test('Cloudflare Images meta confirms publication while drafts, foreign metadata
  }finally{database.close();}
 });
 
+test('private allocation errors retain sanitized provider status and release rejected reservations',async()=>{
+ const {store,database}=repository(),env=environment(store);
+ try{const owner=await login(store),response=await handle(request('create-upload',{...owner,resource:'d'.repeat(32),body:{kind:'video',title:'clip.mp4',caption:'',bytes:100,mime:'video/mp4',duration:10}}),env,{waitUntil(){}},{requestProvider:async()=>new Response('secret upstream details',{status:403})});assert.equal(response.status,503);assert.deepEqual(await response.json(),{error:'upstream_unavailable',stage:'upload_allocation',upstreamStatus:403});assert.equal(store.get('d'.repeat(32)).state,'failed');assert.equal(store.usage('42',now()).videoSeconds,0);
+ }finally{database.close();}
+});
+
 function transport(){
  const xhr=new EventTarget();xhr.upload=new EventTarget();xhr.open=(_method,url)=>{xhr.responseURL=url;};xhr.send=body=>{xhr.body=body;};xhr.abort=()=>xhr.dispatchEvent(new Event('abort'));
  xhr.progress=(loaded,total)=>{const event=new Event('progress');Object.assign(event,{loaded,total,lengthComputable:true});xhr.upload.dispatchEvent(event);};
@@ -28,6 +34,24 @@ function transport(){
  return xhr;
 }
 const image=new File([new Uint8Array(100)],'picture.png',{type:'image/png'}),grant={protocol:'post',uploadUrl:'https://upload.imagedelivery.net/capability'};
+test('fresh TUS uploads start with PATCH, respect chunk offsets and never probe Upload-Length',async()=>{
+ const file=new File([new Uint8Array(10*1024*1024+512)],'clip.mp4',{type:'video/mp4'}),methods=[],progress=[],videoGrant={protocol:'tus',uploadUrl:'https://upload.videodelivery.net/capability'};
+ await uploadFile(file,videoGrant,value=>progress.push(value),{request:async(_url,options)=>{methods.push(options.method);assert.equal(options.credentials,'omit');assert.equal(options.redirect,'error');const offset=Number(options.headers['Upload-Offset']),expected=methods.length===1?0:10*1024*1024;assert.equal(offset,expected);return new Response(null,{status:204,headers:{'Upload-Offset':String(offset+options.body.size)}});}});
+ assert.deepEqual(methods,['PATCH','PATCH']);assert.equal(progress[0],0);assert.equal(progress.at(-1),1);assert.ok(progress[1]>0&&progress[1]<1);
+});
+
+test('TUS recovers partially accepted bytes using HEAD without relying on an exposed Upload-Length',async()=>{
+ const file=new File([new Uint8Array(1024)],'clip.mp4',{type:'video/mp4'}),methods=[],grant={protocol:'tus',uploadUrl:'https://upload.videodelivery.net/capability'};
+ await uploadFile(file,grant,()=>{},{request:async(_url,options)=>{methods.push(options.method);if(methods.length===1)throw new TypeError('Network interrupted');if(options.method==='HEAD')return new Response(null,{headers:{'Upload-Offset':'512'}});assert.equal(options.headers['Upload-Offset'],'512');assert.equal(options.body.size,512);return new Response(null,{status:204,headers:{'Upload-Offset':'1024'}});}});
+ assert.deepEqual(methods,['PATCH','HEAD','PATCH']);
+});
+
+test('TUS rejects absent or corrupt offsets and permanent HTTP failures with diagnostic status',async()=>{
+ const file=new File([new Uint8Array(1024)],'clip.mp4',{type:'video/mp4'}),grant={protocol:'tus',uploadUrl:'https://upload.videodelivery.net/capability'};
+ for(const offset of [null,'','NaN','-1','1025','1']){let requests=0;await assert.rejects(uploadFile(file,grant,()=>{},{request:async()=>{requests++;return new Response(null,{status:204,headers:offset===null?{}:{'Upload-Offset':offset}});}}),{message:'invalid_upload_offset',status:204});assert.equal(requests,1);}
+ let requests=0;await assert.rejects(uploadFile(file,grant,()=>{},{request:async()=>{requests++;return new Response(null,{status:403});}}),{message:'upload_failed',status:403});assert.equal(requests,1);
+ const abort=new AbortController(),task=uploadFile(file,grant,()=>{},{signal:abort.signal,request:async()=>{setTimeout(()=>abort.abort(),25);throw new TypeError('Network interrupted');}});await assert.rejects(task,{name:'AbortError'});
+});
 test('image transport reports real byte progress, verifies provider success and supports immediate cancellation',async()=>{
  const xhr=transport(),progress=[],abort=new AbortController(),task=uploadFile(image,grant,value=>progress.push(value),{createRequest:()=>xhr,signal:abort.signal});
  assert.equal(xhr.withCredentials,false);assert.equal(xhr.body.get('file').name,'picture.png');xhr.progress(25,100);xhr.progress(75,100);assert.deepEqual(progress,[0,.25,.75]);xhr.complete();await task;assert.equal(progress.at(-1),1);

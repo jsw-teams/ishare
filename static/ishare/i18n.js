@@ -158,7 +158,7 @@ const dictionaries={
     "publishedPost": "Your post is published",
     "publishRetry": "Upload failed. This attempt’s attachments were removed; select your files to try again.",
     "processingWait": "Upload received. Processing is still in progress; you can finish publishing from your history.",
-    "uploadConfirmFailed": "Upload failed. This attempt’s attachments were removed; select your files to try again.",
+    "uploadConfirmFailed": "The server could not confirm this attachment.",
     "sentBytes": "Sent",
     "uploadComplete": "Upload complete",
     "attachmentNumber": "Attachment",
@@ -172,7 +172,7 @@ const dictionaries={
     "cleaningUpload": "Removing this upload…",
     "uploadFailed": "Upload cancelled",
     "uploadCancelled": "Cancelled. This attempt’s attachments were removed.",
-    "uploadRolledBack": "Upload failed. This attempt’s attachments were removed; select your files to try again.",
+    "uploadRolledBack": "This attempt’s attachments were removed; select your files to try again.",
     "cleanupPending": "Upload stopped. Remaining attachments are being removed automatically.",
     "keepContent": "Keep",
     "confirmDelete": "Delete",
@@ -194,7 +194,10 @@ const dictionaries={
     "configured": "Configured",
     "notConfigured": "Not configured",
     "connected": "Connected",
-    "notConnected": "Connection failed"
+    "notConnected": "Connection failed",
+    "uploadPermissionFailed": "The media service rejected upload authorization. Please contact the administrator.",
+    "previewUnavailable": "Preview will be generated after upload.",
+    "uploadOffsetFailed": "The video server did not confirm the uploaded bytes. Please retry."
   },
   "zh-CN": {
     "title": "把你的所见，分享给世界。",
@@ -355,7 +358,7 @@ const dictionaries={
     "publishedPost": "帖子已发布成功",
     "publishRetry": "上传失败，本次上传附件已移除，请重新选择文件后重试。",
     "processingWait": "文件已上传，仍在处理中，可从分享历史继续完成发布。",
-    "uploadConfirmFailed": "上传失败，本次上传附件已移除，请重新选择文件后重试。",
+    "uploadConfirmFailed": "服务端未能确认此附件。",
     "sentBytes": "已传输",
     "uploadComplete": "上传完成",
     "attachmentNumber": "附件",
@@ -369,7 +372,7 @@ const dictionaries={
     "cleaningUpload": "正在移除本次上传…",
     "uploadFailed": "上传已停止",
     "uploadCancelled": "已取消，本次上传附件已移除。",
-    "uploadRolledBack": "上传失败，本次上传附件已移除，请重新选择文件后重试。",
+    "uploadRolledBack": "本次上传附件已移除，请重新选择文件后重试。",
     "cleanupPending": "上传已停止，剩余附件正在自动移除。",
     "keepContent": "保留",
     "confirmDelete": "删除",
@@ -391,7 +394,10 @@ const dictionaries={
     "configured": "已配置",
     "notConfigured": "未配置",
     "connected": "连接正常",
-    "notConnected": "连接失败"
+    "notConnected": "连接失败",
+    "uploadPermissionFailed": "媒体服务拒绝了上传授权，请联系管理员。",
+    "previewUnavailable": "上传后生成视频封面。",
+    "uploadOffsetFailed": "视频服务未确认已上传的字节，请重试。"
   },
   "zh-TW": {
     "title": "把你的所見，分享給世界。",
@@ -552,7 +558,7 @@ const dictionaries={
     "publishedPost": "貼文已發布成功",
     "publishRetry": "上傳失敗，本次上傳附件已移除，請重新選擇檔案後重試。",
     "processingWait": "檔案已上傳，仍在處理中，可從分享歷史繼續完成發布。",
-    "uploadConfirmFailed": "上傳失敗，本次上傳附件已移除，請重新選擇檔案後重試。",
+    "uploadConfirmFailed": "伺服器未能確認此附件。",
     "sentBytes": "已傳輸",
     "uploadComplete": "上傳完成",
     "attachmentNumber": "附件",
@@ -566,7 +572,7 @@ const dictionaries={
     "cleaningUpload": "正在移除本次上傳…",
     "uploadFailed": "上傳已停止",
     "uploadCancelled": "已取消，本次上傳附件已移除。",
-    "uploadRolledBack": "上傳失敗，本次上傳附件已移除，請重新選擇檔案後重試。",
+    "uploadRolledBack": "本次上傳附件已移除，請重新選擇檔案後重試。",
     "cleanupPending": "上傳已停止，剩餘附件正在自動移除。",
     "keepContent": "保留",
     "confirmDelete": "刪除",
@@ -588,7 +594,10 @@ const dictionaries={
     "configured": "已設定",
     "notConfigured": "未設定",
     "connected": "連線正常",
-    "notConnected": "連線失敗"
+    "notConnected": "連線失敗",
+    "uploadPermissionFailed": "媒體服務拒絕了上傳授權，請聯絡管理員。",
+    "previewUnavailable": "上傳後產生影片封面。",
+    "uploadOffsetFailed": "影片服務未確認已上傳的位元組，請重試。"
   }
 };
 

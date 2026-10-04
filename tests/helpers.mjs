@@ -4,7 +4,7 @@ import {defaults} from '../backend/cloudflare/quotas.js';
 import { digest, random } from '../backend/cloudflare/security.js';
 export function repository(){
   const database=new DatabaseSync(':memory:');
-  const sql={exec(query,...args){if(!args.length&&query.includes(';')){database.exec(query);return [];}return database.prepare(query).all(...args);}};
+  const sql={exec(query,...args){if(!args.length&&query.includes(';')){database.exec(query);return [];}return database.prepare(query).all(...args.map(value=>value instanceof ArrayBuffer?new Uint8Array(value):value));}};
   const atomic=fn=>{database.exec('BEGIN');try{const result=fn();database.exec('COMMIT');return result;}catch(error){database.exec('ROLLBACK');throw error;}};
   return {store:new Repository(sql,atomic),database};
 }

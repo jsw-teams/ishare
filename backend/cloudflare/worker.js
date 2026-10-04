@@ -25,6 +25,8 @@ export class ShareStore extends DurableObject {
   key(){return this.invoke('key',[]);}
   videoToken(...args){return this.invoke('videoToken',args);}
   saveVideoToken(...args){return this.invoke('saveVideoToken',args);}
+  videoCover(...args){return this.invoke('videoCover',args);}
+  saveVideoCover(...args){return this.invoke('saveVideoCover',args);}
   rate(...args){return this.invoke('rate',args);}
   beginAuth(...args){return this.invoke('beginAuth',args);}
   consumeAuth(...args){return this.invoke('consumeAuth',args);}

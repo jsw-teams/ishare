@@ -46,6 +46,13 @@ export async function rewriteManifest(body,base,media,secret,expires,env) {
 export async function deliver(request,env,item,resource,store,context,{requestUpstream=fetch,requestProvider=fetch,cache=globalThis.caches?.default}={}) {
   const now=Math.floor(Date.now()/1000);
   let upstream,manifest=false;const thumbnail=item.kind==='video'&&resource==='thumbnail',image=item.kind==='image'||thumbnail;
+  const coverKey=thumbnail?new Request(new URL('/__ishare-cache/'+item.id+'/cover',request.url)):null;
+  const coverResponse=cover=>new Response(request.method==='HEAD'?null:cover.body,{headers:headers({'Content-Type':cover.mime,'Cache-Control':'public, max-age=300','Cross-Origin-Resource-Policy':'cross-origin'},true)});
+  if(thumbnail){
+    if(cache){const hit=await cache.match(coverKey);if(hit)return new Response(request.method==='HEAD'?null:hit.body,{status:hit.status,headers:hit.headers});}
+    const cover=await store.videoCover(item.id);if(cover){const result=coverResponse(cover);if(cache&&request.method!=='HEAD')context.waitUntil(cache.put(coverKey,result.clone()).catch(()=>{}));return result;}
+    if(request.method==='HEAD')return new Response(null,{headers:headers({'Content-Type':'image/jpeg','Cache-Control':'no-store'},true)});
+  }
   if(item.kind==='image') {
     if(!['public','thumbnail'].includes(resource))fail('invalid_variant',404);
     upstream=imageAddress(env,item);
@@ -55,7 +62,7 @@ export async function deliver(request,env,item,resource,store,context,{requestUp
     else if(resource!=='master.m3u8'){const current=await videoAddress(env,item,now,store,requestProvider);upstream.pathname='/'+current.pathname.split('/')[1]+'/'+upstream.pathname.split('/').slice(2).join('/');}
     manifest=/\.m3u8$/.test(upstream.pathname);
   }
-  const range=request.headers.get('range');if(range&&!/^bytes=\d+-\d*$/.test(range))fail('invalid_range',416);
+  const range=thumbnail?null:request.headers.get('range');if(range&&!/^bytes=\d+-\d*$/.test(range))fail('invalid_range',416);
   if(request.method==='HEAD')return new Response(null,{headers:headers({'Content-Type':manifest?'application/vnd.apple.mpegurl':thumbnail?'image/jpeg':image?item.mime||'image/jpeg':'application/octet-stream','Cache-Control':'no-store'},true)});
   if(item.kind==='image'||upstream.ishareSeconds>0)await store.delivery(item.owner,item.kind,item.kind==='image'?1:upstream.ishareSeconds,now);
   // Internal cache identities omit expiring signatures; upstream content is immutable per media ID.
@@ -67,6 +74,13 @@ export async function deliver(request,env,item,resource,store,context,{requestUp
   if(![200,206].includes(response.status)){await response.body?.cancel();fail([404,410].includes(response.status)?'media_missing':'media_unavailable',[404,410].includes(response.status)?404:502);}
   const mime=(response.headers.get('content-type')||'').split(';')[0].toLowerCase();
   if(image&&!/^image\/(jpeg|png|webp|avif|gif)$/.test(mime)){await response.body?.cancel();fail('invalid_upstream',502);}
+  if(thumbnail){
+    if(response.status!==200||mime!=='image/jpeg'){await response.body?.cancel();fail('invalid_upstream',502);}
+    const reader=response.body.getReader(),parts=[];let size=0;
+    for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>2_000_000){await reader.cancel();fail('invalid_upstream',502);}parts.push(value);}
+    if(!size)fail('invalid_upstream',502);const body=new Uint8Array(size);let offset=0;for(const part of parts){body.set(part,offset);offset+=part.byteLength;}
+    const result=coverResponse(await store.saveVideoCover(item.id,body,mime));if(cache)context.waitUntil(cache.put(coverKey,result.clone()).catch(()=>{}));return result;
+  }
   if(!image&&!/^(application\/(vnd\.apple\.mpegurl|x-mpegurl|octet-stream)|video\/(mp2t|mp4)|audio\/(mp4|aac|mpeg)|text\/vtt)$/.test(mime)){await response.body?.cancel();fail('invalid_upstream',502);}
   const resultHeaders=headers({'Content-Type':manifest?'application/vnd.apple.mpegurl':mime,'Cache-Control':manifest?'public, max-age=20':'public, max-age=300','Cross-Origin-Resource-Policy':'cross-origin'},true);
   if(range){for(const name of ['Content-Range','Accept-Ranges'])if(response.headers.has(name))resultHeaders.set(name,response.headers.get(name));}

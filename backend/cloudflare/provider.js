@@ -19,7 +19,7 @@ export function provider(env,request=fetch) {
     try{response=await request(`https://api.cloudflare.com/client/v4/accounts/${account}/${path}`,{...options,headers:{Authorization:'Bearer '+token,...options.headers},redirect:'manual',signal:AbortSignal.timeout(20000)});}catch{fail('upstream_unavailable',503);}
     if(options.method==='DELETE'&&[404,410].includes(response.status)){await response.body?.cancel();return {};}
     if([404,410].includes(response.status)&&/^((images\/v1|stream)\/[^/]+)(\/token)?$/.test(path)){await response.body?.cancel();fail('media_missing',404);}
-    if(!response.ok){const error=new ServiceError('upstream_unavailable',503);error.safeToRelease=[400,401,403,422].includes(response.status);throw error;}
+    if(!response.ok){const error=new ServiceError('upstream_unavailable',503);error.safeToRelease=[400,401,403,422].includes(response.status);error.upstreamStatus=response.status;error.stage=options.method==='POST'?'upload_allocation':'provider_api';throw error;}
     const result=await response.json().catch(()=>null);
     if(!result?.success||options.method!=='DELETE'&&!result.result)fail('upstream_unavailable',503);
     return result.result;
@@ -52,7 +52,7 @@ export function provider(env,request=fetch) {
       const metadata=Object.entries(meta).map(([key,value])=>value?key+' '+btoa(value):key).join(',');
       const {account,token}=resourceConfiguration(env,'video');
       let response;try{response=await request(`https://api.cloudflare.com/client/v4/accounts/${account}/stream?direct_user=true`,{method:'POST',headers:{Authorization:'Bearer '+token,'Tus-Resumable':'1.0.0','Upload-Length':String(item.bytes),'Upload-Metadata':metadata,'Upload-Creator':'ishare:'+item.owner},redirect:'manual',signal:AbortSignal.timeout(20000)});}catch{fail('upstream_unavailable',503);}
-      if(response.status!==201){const error=new ServiceError('upstream_unavailable',503);error.safeToRelease=[400,401,403,422].includes(response.status);throw error;}
+      if(response.status!==201){const error=new ServiceError('upstream_unavailable',503);error.safeToRelease=[400,401,403,422].includes(response.status);error.upstreamStatus=response.status;error.stage='upload_allocation';throw error;}
       return grant('video',response.headers.get('stream-media-id'),response.headers.get('Location'));
     },
     async ready(item) {
