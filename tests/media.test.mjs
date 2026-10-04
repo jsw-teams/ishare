@@ -8,7 +8,7 @@ import {handle} from '../backend/cloudflare/service.js';
 import {repository,environment,media,limits,now,login} from './helpers.mjs';
 
 test('deleted Images and Stream resources return safe uncached errors and retain published records',async()=>{
- const {store,database}=repository(),env=environment(store),clock=now();delete env.STREAM_SIGNING_KEY;delete env.STREAM_SIGNING_KEY_ID;
+ const {store,database}=repository(),env=environment(store),clock=now();
  try{
   await login(store);const image=media(),video=media({id:'b'.repeat(32),kind:'video',mime:'video/mp4',duration:10});
   for(const item of [image,video]){store.reserve(item,limits,clock);store.attach(item.id,'provider-id-123456789012345','https://upload.example/test',clock);store.publish(item.id,'42',item.duration,clock,'99');}
@@ -30,7 +30,7 @@ test('share pages and embeds keep post text, show media errors and recover image
    await context.route('**/*',async route=>{const url=new URL(route.request().url());assert.equal(url.origin,site);
     if(url.pathname==='/s/'+post.id||url.pathname==='/embed/'+post.id)return route.fulfill({contentType:'text/html',body:await(await renderPage(post,assets,site,embedded)).text()});
     if(url.pathname.startsWith('/i/')){imageCalls++;if(imageCalls===1)return route.fulfill({status:404,contentType:'application/json',headers:{'Cache-Control':'no-store'},body:'{"error":"media_missing"}'});return route.fulfill({contentType:'image/png',body:await readFile('content/assets/brand/bear-icon.3754101e8d6380da.png')});}
-    if(url.pathname.startsWith('/v/')){videoCalls++;return route.fulfill({status:410,contentType:'application/json',headers:{'Cache-Control':'no-store'},body:'{"error":"media_missing"}'});}
+    if(url.pathname.endsWith('/thumbnail'))return route.fulfill({contentType:'image/png',body:await readFile('content/assets/brand/bear-icon.3754101e8d6380da.png')});if(url.pathname.startsWith('/v/')){videoCalls++;return route.fulfill({status:410,contentType:'application/json',headers:{'Cache-Control':'no-store'},body:'{"error":"media_missing"}'});}
     if(url.pathname==='/api')return route.fulfill({contentType:'image/png',body:await readFile('content/assets/brand/bear-icon.3754101e8d6380da.png')});
     const path=url.pathname.slice(1),types={'.js':'text/javascript','.css':'text/css','.png':'image/png','.webp':'image/webp','.svg':'image/svg+xml'};return route.fulfill({contentType:types[extname(path)]||'text/html',body:await readFile('dist/'+path)});
    });
@@ -38,7 +38,7 @@ test('share pages and embeds keep post text, show media errors and recover image
    const failure=page.locator('.post-attachment').first().locator('.media-feedback');await failure.waitFor({state:'visible'});assert.match(await failure.textContent(),/deleted|unavailable/);assert.match(await page.locator('.shared-post>.caption').textContent(),/Keep this story/);assert.equal(imageCalls,1);
    await failure.getByRole('button',{name:'Retry loading'}).click();await failure.waitFor({state:'hidden'});assert.equal(await page.locator('img[data-media]').evaluate(node=>node.naturalWidth>0&&!node.hidden),true);assert.equal(imageCalls,2);
    await page.locator('video').evaluate(node=>{void node.play().catch(()=>{});});const videoFailure=page.locator('.post-attachment').nth(1).locator('.media-feedback');await videoFailure.waitFor({state:'visible'});assert.match(await videoFailure.textContent(),/no longer available|deleted/);assert.equal(videoCalls,1);
-   await videoFailure.getByRole('button',{name:'Retry loading'}).click();await page.waitForFunction(()=>document.querySelector('video').nextElementSibling.querySelector('button').disabled===false);assert.equal(videoCalls,2);assert.equal(imageCalls,2);assert.deepEqual(errors,[]);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+   await videoFailure.getByRole('button',{name:'Retry loading'}).click();await page.waitForFunction(()=>document.querySelector('video').parentElement.querySelector('.media-feedback button').disabled===false);assert.equal(videoCalls,2);assert.equal(imageCalls,2);assert.deepEqual(errors,[]);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
    await context.close();
   }
  }finally{await browser.close();}

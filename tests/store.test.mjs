@@ -21,8 +21,8 @@ test('ownership, processing state, duration and uncertain outcomes keep quotas s
     assert.equal(store.publish('a'.repeat(32),'42',30,now()).duration,30);
     store.reserve(media({id:'b'.repeat(32)}),limits,now());store.uncertain('b'.repeat(32));
     store.cleanup(now()+200000);assert.equal(store.get('b'.repeat(32)).state,'uncertain');assert.equal(store.get('a'.repeat(32)).state,'published');
-    assert.throws(()=>store.markDelete('a'.repeat(32),'other'),/not_found/);
-    store.markDelete('a'.repeat(32),'42');assert.equal(store.get('a'.repeat(32)).state,'deleting');store.deleted('a'.repeat(32));assert.equal(store.get('a'.repeat(32)).provider_id,null);
+    assert.throws(()=>store.prepareRemoval('a'.repeat(32),'other',false,[],false),/not_found/);
+    store.prepareRemoval('a'.repeat(32),'42',false,[],false);assert.equal(store.get('a'.repeat(32)).state,'deleting');store.deleted('a'.repeat(32));assert.equal(store.get('a'.repeat(32)).provider_id,null);
   }finally{database.close();}
 });
 test('OAuth state is single-use and expired authentication cannot create a session',()=>{

@@ -45,17 +45,18 @@ export async function rewriteManifest(body,base,media,secret,expires,env) {
 
 export async function deliver(request,env,item,resource,store,context,{requestUpstream=fetch,requestProvider=fetch,cache=globalThis.caches?.default}={}) {
   const now=Math.floor(Date.now()/1000);
-  let upstream,manifest=false;
+  let upstream,manifest=false;const thumbnail=item.kind==='video'&&resource==='thumbnail',image=item.kind==='image'||thumbnail;
   if(item.kind==='image') {
     if(!['public','thumbnail'].includes(resource))fail('invalid_variant',404);
     upstream=imageAddress(env,item);
   }else {
-    upstream=resource==='master.m3u8'?await videoAddress(env,item,now,store,requestProvider):await openResource(resource,item.id,await store.key(),now,env,item);
-    if(resource!=='master.m3u8'){const current=await videoAddress(env,item,now,store,requestProvider);upstream.pathname='/'+current.pathname.split('/')[1]+'/'+upstream.pathname.split('/').slice(2).join('/');}
+    upstream=resource==='master.m3u8'||thumbnail?await videoAddress(env,item,now,store,requestProvider):await openResource(resource,item.id,await store.key(),now,env,item);
+    if(thumbnail){upstream.pathname=upstream.pathname.replace('/manifest/video.m3u8','/thumbnails/thumbnail.jpg');upstream.search='time=0s&width=640&height=360&fit=clip';}
+    else if(resource!=='master.m3u8'){const current=await videoAddress(env,item,now,store,requestProvider);upstream.pathname='/'+current.pathname.split('/')[1]+'/'+upstream.pathname.split('/').slice(2).join('/');}
     manifest=/\.m3u8$/.test(upstream.pathname);
   }
   const range=request.headers.get('range');if(range&&!/^bytes=\d+-\d*$/.test(range))fail('invalid_range',416);
-  if(request.method==='HEAD')return new Response(null,{headers:headers({'Content-Type':manifest?'application/vnd.apple.mpegurl':item.kind==='image'?item.mime||'image/jpeg':'application/octet-stream','Cache-Control':'no-store'},true)});
+  if(request.method==='HEAD')return new Response(null,{headers:headers({'Content-Type':manifest?'application/vnd.apple.mpegurl':thumbnail?'image/jpeg':image?item.mime||'image/jpeg':'application/octet-stream','Cache-Control':'no-store'},true)});
   if(item.kind==='image'||upstream.ishareSeconds>0)await store.delivery(item.owner,item.kind,item.kind==='image'?1:upstream.ishareSeconds,now);
   // Internal cache identities omit expiring signatures; upstream content is immutable per media ID.
   const path=item.kind==='video'?upstream.pathname.split('/').slice(2).join('/')+'?'+upstream.searchParams.toString():'blob';
@@ -65,8 +66,8 @@ export async function deliver(request,env,item,resource,store,context,{requestUp
   try{response=await requestUpstream(upstream,{method:'GET',headers:{...(item.kind==='image'?{Authorization:'Bearer '+env.MEDIA_API_TOKEN}:{}),...(range?{Range:range}:{})},redirect:'manual',signal:AbortSignal.timeout(20000)});}catch{fail('media_unavailable',503);}
   if(![200,206].includes(response.status)){await response.body?.cancel();fail([404,410].includes(response.status)?'media_missing':'media_unavailable',[404,410].includes(response.status)?404:502);}
   const mime=(response.headers.get('content-type')||'').split(';')[0].toLowerCase();
-  if(item.kind==='image'&&!/^image\/(jpeg|png|webp|avif|gif)$/.test(mime)){await response.body?.cancel();fail('invalid_upstream',502);}
-  if(item.kind==='video'&&!/^(application\/(vnd\.apple\.mpegurl|x-mpegurl|octet-stream)|video\/(mp2t|mp4)|audio\/(mp4|aac|mpeg)|text\/vtt)$/.test(mime)){await response.body?.cancel();fail('invalid_upstream',502);}
+  if(image&&!/^image\/(jpeg|png|webp|avif|gif)$/.test(mime)){await response.body?.cancel();fail('invalid_upstream',502);}
+  if(!image&&!/^(application\/(vnd\.apple\.mpegurl|x-mpegurl|octet-stream)|video\/(mp2t|mp4)|audio\/(mp4|aac|mpeg)|text\/vtt)$/.test(mime)){await response.body?.cancel();fail('invalid_upstream',502);}
   const resultHeaders=headers({'Content-Type':manifest?'application/vnd.apple.mpegurl':mime,'Cache-Control':manifest?'public, max-age=20':'public, max-age=300','Cross-Origin-Resource-Policy':'cross-origin'},true);
   if(range){for(const name of ['Content-Range','Accept-Ranges'])if(response.headers.has(name))resultHeaders.set(name,response.headers.get(name));}
   let body=response.body;

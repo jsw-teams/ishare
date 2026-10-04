@@ -42,9 +42,9 @@ test('owner quota settings are stored online, preserve existing user defaults an
  }finally{database.close();}
 });
 
-test('files above the former 1 GiB cap can receive video grants using one legacy account Secret',async()=>{
- const {store,database}=repository(),env=environment(store);env.STREAM_CUSTOMER_CODE=env.IMAGES_ACCOUNT_ID;delete env.IMAGES_ACCOUNT_ID;delete env.STREAM_ACCOUNT_ID;
- try{const user=await login(store);let allocations=0;const network=async(url,options)=>{allocations++;assert.match(url,new RegExp('/accounts/'+env.STREAM_CUSTOMER_CODE+'/stream$'));assert.equal(options.headers['Upload-Length'],'5000000000');return new Response(null,{status:201,headers:{Location:'https://upload.videodelivery.net/temporary','stream-media-id':'private-provider-123456789012345'}});};
+test('files above the former 1 GiB cap can receive video grants using one shared account Secret',async()=>{
+ const {store,database}=repository(),env=environment(store);
+ try{const user=await login(store);let allocations=0;const network=async(url,options)=>{allocations++;assert.match(url,new RegExp('/accounts/'+env.STREAM_ACCOUNT_ID+'/stream\\?direct_user=true$'));assert.equal(options.headers['Upload-Length'],'5000000000');assert.match(options.headers['Upload-Metadata'],/(?:^|,)requiresignedurls(?:,|$)/);assert.doesNotMatch(options.headers['Upload-Metadata'],/requiresignedurls /);return new Response(null,{status:201,headers:{Location:'https://upload.videodelivery.net/temporary','stream-media-id':'private-provider-123456789012345'}});};
  const body={kind:'video',title:'Large video',bytes:5000000000,mime:'video/mp4',duration:30};assert.equal((await handle(request('create-upload',{...user,body}),env,ctx,{requestProvider:network})).status,201);assert.equal((await handle(request('create-upload',{...user,body:{...body,bytes:30000000000}}),env,ctx,{requestProvider:network})).status,413);assert.equal(allocations,1);
  }finally{database.close();}
 });

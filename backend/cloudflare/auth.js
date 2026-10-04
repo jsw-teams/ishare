@@ -47,8 +47,10 @@ export async function callback(request,env,store,now,requestGithub=fetch) {
   const user=await github('https://api.github.com/user',{headers:{Authorization:'Bearer '+data.access_token,Accept:'application/vnd.github+json','User-Agent':'ishare','X-GitHub-Api-Version':'2022-11-28'}},requestGithub,'identity');
   if(!Number.isSafeInteger(user.id)||user.id<1||typeof user.login!=='string'||!/^[a-z\d-]{1,39}$/i.test(user.login))fail('invalid_identity',503);
   const identity={id:String(user.id),login:user.login,name:typeof user.name==='string'?user.name.slice(0,100):user.login};
-  const token=random();await store.makeSession(await digest(token),identity,random(),now);
-  const response=new Response(null,{status:303,headers:{Location:requestOrigin(request)+'/mine/', 'Cache-Control':'no-store','Referrer-Policy':'no-referrer'}});
+  const token=random(),hash=await digest(token);await store.makeSession(hash,identity,random(),now);
+  const {account}=await store.snapshot(hash,'',env.OWNER_GITHUB_ID,[],now),allowed=identity.id===env.OWNER_GITHUB_ID||!env.PUBLISHER_IDS||env.PUBLISHER_IDS==='*'||env.PUBLISHER_IDS.split(',').map(value=>value.trim()).includes(identity.id);
+  const destination=account.erasing?'/profile/':!allowed||account.blocked||account.sharingBlocked?'/appeal/':'/mine/';
+  const response=new Response(null,{status:303,headers:{Location:requestOrigin(request)+destination, 'Cache-Control':'no-store','Referrer-Policy':'no-referrer'}});
   response.headers.append('Set-Cookie',setCookie(oauthName,'',0));response.headers.append('Set-Cookie',setCookie(sessionName,token,86400));return response;
 }
 export async function logout(request,store) {const token=cookie(request,sessionName);if(token)await store.logout(await digest(token));return json({ok:true},200,{'Set-Cookie':setCookie(sessionName,'',0)});}

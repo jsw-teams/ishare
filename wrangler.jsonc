@@ -13,9 +13,32 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "404-page",
-    "run_worker_first": ["/api", "/u/*", "/auth", "/auth/callback", "/oembed", "/s/*", "/embed/*", "/i/*", "/v/*"]
+    "run_worker_first": [
+      "/api",
+      "/u/*",
+      "/auth",
+      "/auth/callback",
+      "/oembed",
+      "/s/*",
+      "/embed/*",
+      "/i/*",
+      "/v/*"
+    ]
   },
-  "durable_objects": { "bindings": [{ "name": "SHARE_STORE", "class_name": "ShareStore" }] },
-  "migrations": [{ "tag": "ishare-v1", "new_sqlite_classes": ["ShareStore"] }],
-  "triggers": { "crons": ["17 * * * *"] }
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SHARE_STORE",
+        "class_name": "ShareStore"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "ishare-v1",
+      "new_sqlite_classes": [
+        "ShareStore"
+      ]
+    }
+  ]
 }

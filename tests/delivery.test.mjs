@@ -7,6 +7,13 @@ const env=environment({}),item={id:'a'.repeat(32),kind:'video',provider_id:'prov
 const token='header.'+b64(new TextEncoder().encode(JSON.stringify({sub:item.provider_id})))+'.signature';
 const base='https://customer-testcustomer.cloudflarestream.com/'+token+'/manifest/video.m3u8';
 
+test('video thumbnails proxy signed image bytes through an opaque URL without playback billing',async()=>{
+ const {store,database}=repository(),settings=environment(store),video={...item,owner:'42',mime:'video/mp4',duration:10};let tokens=0;
+ const options={cache:null,requestProvider:async(_url,options)=>{if(options.method==='POST'){tokens++;return Response.json({success:true,result:{token}});}return Response.json({success:true,result:{requireSignedURLs:true,playback:{hls:'https://customer-testcustomer.cloudflarestream.com/'+item.provider_id+'/manifest/video.m3u8'}}});},requestUpstream:async url=>{assert.equal(url.pathname,'/'+token+'/thumbnails/thumbnail.jpg');assert.equal(url.searchParams.get('width'),'640');return new Response(new Uint8Array([1,2,3]),{headers:{'Content-Type':'image/jpeg',Location:url.href}});}};
+ try{const url='https://ishare.js.gripe/v/'+item.id+'/thumbnail',response=await deliver(new Request(url),settings,video,'thumbnail',store,{waitUntil(){}},options);assert.equal(response.headers.get('Content-Type'),'image/jpeg');assert.equal(response.headers.get('Location'),null);assert.deepEqual([...new Uint8Array(await response.arrayBuffer())],[1,2,3]);const head=await deliver(new Request(url,{method:'HEAD'}),settings,video,'thumbnail',store,{waitUntil(){}},options);assert.equal(head.headers.get('Content-Type'),'image/jpeg');assert.equal(tokens,1);assert.equal(store.account('42',{},'99',Math.floor(Date.now()/1000)).usage.videoDeliverySeconds,0);
+ }finally{database.close();}
+});
+
 test('HLS playlists rewrite variants, keys, initialization segments and subtitles into encrypted same-origin tickets',async()=>{
   const secret=random(),now=Math.floor(Date.now()/1000);
   const source='#EXTM3U\n#EXT-X-MAP:URI="../init.mp4"\n#EXT-X-KEY:METHOD=AES-128,URI="key.bin"\n#EXT-X-MEDIA:TYPE=SUBTITLES,URI="subtitles/index.m3u8"\n#EXT-X-STREAM-INF:BANDWIDTH=1000\nvariant.m3u8\n';
@@ -31,7 +38,7 @@ test('image delivery returns bytes without leaking provider headers or redirects
 });
 
 test('long video segments renew private upstream tokens without changing public resource tickets',async()=>{
-  const {store,database}=repository(),settings=environment(store),now=Math.floor(Date.now()/1000),video={...item,owner:'42',duration:7200};delete settings.STREAM_SIGNING_KEY;delete settings.STREAM_SIGNING_KEY_ID;
+  const {store,database}=repository(),settings=environment(store),now=Math.floor(Date.now()/1000),video={...item,owner:'42',duration:7200};
   const expired='header.'+b64(new TextEncoder().encode(JSON.stringify({sub:item.provider_id,exp:now-100})))+'.expired',fresh='header.'+b64(new TextEncoder().encode(JSON.stringify({sub:item.provider_id,exp:now+3600})))+'.fresh';
   let minted=0,deliveries=0;try{const ticket=await sealResource(new URL('https://customer-testcustomer.cloudflarestream.com/'+expired+'/video/segment.ts'),item.id,await store.key(),now+7500,4);
     const options={cache:null,requestProvider:async(url,options)=>{if(options.method==='POST'){minted++;return Response.json({success:true,result:{token:fresh}});}return Response.json({success:true,result:{requireSignedURLs:true,playback:{hls:'https://customer-testcustomer.cloudflarestream.com/'+item.provider_id+'/manifest/video.m3u8'}}});},requestUpstream:async url=>{assert.equal(url.pathname,'/'+fresh+'/video/segment.ts');deliveries++;return new Response('segment',{headers:{'Content-Type':'video/mp2t'}});}};

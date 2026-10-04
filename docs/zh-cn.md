@@ -26,7 +26,7 @@
 
 使用 Node 24，执行 `npm ci`、`npm run build`、`npm test`、`npm run deploy`。后端代码位于 `/backend/cloudflare`。Worker 保存配置并通过一个 SQLite Durable Object 保存业务资料；Images 和 Stream 通过 **API Token** 接入，共用一个资源 Cloudflare 账户。没有 Images/Stream 的 Worker binding。
 
-在 Worker 的 Secrets 中配置 一份 `STREAM_ACCOUNT_ID`，以及共用的 `MEDIA_API_TOKEN`（对实际资源账户授权 Images Edit 和 Stream Edit）。已有 `IMAGES_ACCOUNT_ID` 或旧 `STREAM_CUSTOMER_CODE` 中的账户 ID 可兼容读取，无需重复填写；播放器地址由 Stream API 获取。图片代理使用需要 Bearer Token 的原图下载接口，不要求创建专用变体。视频默认在服务端缓存 Stream 播放令牌；高访问量时可额外配置 Stream 签名密钥，避免播放令牌 API 请求。
+在 Worker 的 Secrets 中配置 一份 `STREAM_ACCOUNT_ID`，以及共用的 `MEDIA_API_TOKEN`（对实际资源账户授权 Images Edit 和 Stream Edit）。删除旧 `IMAGES_ACCOUNT_ID` 和 `STREAM_CUSTOMER_CODE`，不再兼容读取旧名称；播放器地址由 Stream API 获取。图片代理使用需要 Bearer Token 的原图下载接口，不要求创建专用变体。视频在服务端缓存 API 取得的签名播放地址和令牌，无需手填签名密钥。
 
 GitHub 登录需要 `GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`，回调地址为 `https://ishare.js.gripe/auth/callback`。其他服务的 GitHub App 回调不应被自动修改。业务域名从请求自动取得，无需额外域名变量；静态页面网址在 `config.yml` 配置，路由由你自行配置；`workers.dev` 与预览域名关闭。托管 Images/Stream 需要相应的平台计划，一键部署不会提供免费的媒体额度或自动继承其他 Worker 的 Secrets。
 
@@ -79,3 +79,5 @@ blocks:
 
 
 动态页面合并首屏读取，后台栏目按需加载；资源被删除或回源失败时显示占位和重新加载按钮，保留帖子文字与其他附件。失败不会自动删除真实记录。
+
+上传弹窗显示真实进度，叉号取消并移除本次新附件。失败自动撤销，不要求手动对账；正常分享与复用附件保留。视频使用真实本地帧预览及本站代理的公开预览图。取消 cron，仅有未完成清理任务时运行一次性 DO alarm，完成即停止。限制账户进入独立申诉页 `/appeal/`；数据与权利仍在个人中心。

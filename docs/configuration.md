@@ -32,9 +32,9 @@
 | `GITHUB_CLIENT_ID` | ishare 登录应用的 GitHub OAuth Client ID |
 | `GITHUB_CLIENT_SECRET` | 同一登录应用的 Client Secret |
 
-Images 与 Stream 使用同一个资源账户，此账户可以与 Worker 所在账户不同。只需一份账户 ID 和一个 `MEDIA_API_TOKEN`：在个人 API Tokens 中选择 Account → Cloudflare Images → Edit、Account → Stream → Edit，并将 Account Resources 限定到该资源账户。通过 API Token 接入，不添加 Images/Stream Worker binding。Secret 不放入源码、`config.yml`、构建变量或聊天中，见 [Cloudflare Token 配置](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/)。
+Images 与 Stream 使用同一个资源账户，此账户可以与 Worker 所在账户不同。只需一份账户 ID 和一个 `MEDIA_API_TOKEN`：在个人 API Tokens 中选择 Images 写入／Edit、Stream 写入／Edit 权限，并将 Account Resources 限定到该资源账户。通过 API Token 接入，不添加 Images/Stream Worker binding。Secret 不放入源码、`config.yml`、构建变量或聊天中，见 [Cloudflare Token 配置](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/)。
 
-已有 Secret 无需重复填写：读取顺序为 `STREAM_ACCOUNT_ID` → `IMAGES_ACCOUNT_ID` → 旧名 `STREAM_CUSTOMER_CODE`。旧名兼容的是你此前存入的 **账户 ID**，不是播放器 customer code。后端通过 Stream API 获取播放域名，缓存签名播放地址；无需手填 customer code。以后整理 Secret 时可保留 `STREAM_ACCOUNT_ID` 一个账户条目，但加密值不能由部署工具读取并自动改名。
+只保留 `STREAM_ACCOUNT_ID` 一个资源账户条目。设置完成后删除旧 `IMAGES_ACCOUNT_ID`、`STREAM_CUSTOMER_CODE`，代码不再读取旧名称。Stream 播放地址与令牌由后端 API 获取并缓存，无需 customer code 或手填签名密钥。账户 ID 是 32 位十六进制字符串，API Token 必须授权实际的资源账户。
 
 当前 ishare 的登录回调为 `https://ishare.js.gripe/auth/callback`。现有 iask App 的回调保持原配置；使用独立 OAuth App 时，Homepage 填 `https://ishare.js.gripe`，Authorization callback URL 填上述 ishare 回调。现有实现不会自动把 ishare 登录转发到 iask。
 
@@ -42,7 +42,6 @@ Images 与 Stream 使用同一个资源账户，此账户可以与 Worker 所在
 
 业务域名由 Worker 当前请求自动取得，不依赖 `SITE_ORIGIN` 或 `WEBSITE_ORIGINS`，旧条目可以删除。公开元数据允许任意网站读取；登录、账户管理及写入仍限同源并校验 CSRF。只需在 `config.yml` 的 `site.url` 填写静态页面的正式网址。运营者数字 ID `228026986` 保留在 `wrangler.jsonc`。运营者使用该 GitHub 账户登录，进入“管理后台 → 平台配额”，在线调整新用户默认额度与共享容量；在“用户管理”调整个人配额、权限及处理隐私请求。配额存于 SQLite，不再读取 `MAX_*` 或 `QUOTA_*` 系统变量。普通共享容量降低提前七天通知；新用户默认额度变化保留已有用户当前及已排定额度。
 
-初次接入可以不配置 Stream 本地签名密钥。后续如使用它，`STREAM_SIGNING_KEY_ID` 与 `STREAM_SIGNING_KEY` 必须成对填写；否则默认使用缓存的服务端播放令牌。
 
 ## 平台嵌入与页面元素
 
@@ -88,3 +87,20 @@ EdgePress 自动生成 CSP 响应头与 HTML 策略，适配静态托管。启�
 我的分享、管理后台、个人中心的首屏数据随会话一次返回，并由单次 DO 调用读取。后台隐藏栏目按访问加载，栏目切换保留本页结果；使用刷新按钮重新获取。只合并同时进行的相同读取，不持久缓存私人数据，写入后重新获取当前会话及页面数据。
 
 源站 Images/Stream 资源不存在时返回 `media_missing`，临时失败返回不可用错误；失败响应不缓存，也不公开源站地址。页面、分享卡片与嵌入显示占位和手动重试，文字与其他附件保留。资源回源失败不会自动删除帖子或修改用户配额。正常媒体已有最长五分钟缓存窗口。上传和失效测试使用内存 SQLite 与浏览器拦截，测试结束关闭数据库及浏览器，不写入生产模拟记录。
+
+
+## 配置检查与失败清理
+
+`OWNER_GITHUB_ID` 是普通运行时变量，本站值为 `228026986`。这五个必填配置均放在现有 ishare Worker 的运行时设置中：两个 GitHub 凭据、`STREAM_ACCOUNT_ID`、`MEDIA_API_TOKEN`、`OWNER_GITHUB_ID`。配额在线管理，不放入环境变量。SQLite 的 `SHARE_STORE` 由部署配置自动绑定，不能删除后重新创建。
+
+管理员登录后，在管理后台的平台配额栏目点击“检查配置”，可以检查资源 API 是否可读取。读取成功不等于写入权限正确；Token 仍需 Images 与 Stream 的写入权限。检查不会上传测试文件，也不会返回账户 ID、Token 或源站地址。配置项已存在时编辑原条目，避免同名变量／Secret 冲突；账户 ID 不要误填播放器 customer code。
+
+视频直传使用 `POST /stream?direct_user=true` 和 TUS 请求头，签名标记是无值的 `requiresignedurls`。图片使用 Images V2 返回的 `id`、`uploadURL`，发布时用详情的 `meta.ishare` 核验。直传地址只用于当前上传，公开分享继续代理到本站的不透明媒体路径。
+
+上传以中间弹窗显示真实字节进度；叉号或 Escape 会取消并移除本次新附件。失败也自动撤销，不保留重试记录或要求手动对账。源站分配结果不确定时，按 `creator` 与唯一应用 ID 查找并删除该次资源；确认源站清理后释放存储额度。正常已发表帖子和被复用附件不受失败撤销影响。视频使用本地帧预览，公开预览图由 `/v/应用ID/thumbnail` 代理。
+
+没有 cron。仅有待处理上传、删除或注销时设置一次性 DO alarm，完成即停止；源站短暂故障重试剩余工作。原迁移记录与对象标识保留，仅覆盖现有 Worker，不新建版本数据库。数据库自动清理只处理失败上传与已请求的删除，资源回源失败不会删除正常帖子。
+
+限制账户登录后进入独立 `/appeal/` 申诉页，其他数据与权利仍在 `/profile/`。
+
+过期会话、授权状态、计数与最小化历史记录按各自保留期限设置一次性清理，保留到期后才唤醒，不恢复固定周期 cron。

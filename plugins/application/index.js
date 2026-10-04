@@ -9,16 +9,18 @@ export default function application(api){
     if(page.urlPath===localizedUrl(config,page.locale,'mine/'))return translate(await readFile(new URL('./mine.html',import.meta.url),'utf8'),page.locale);
     if(page.urlPath===localizedUrl(config,page.locale,'admin/'))return translate(await readFile(new URL('./admin.html',import.meta.url),'utf8'),page.locale);
     if(page.urlPath===localizedUrl(config,page.locale,'profile/'))return translate(await readFile(new URL('./profile.html',import.meta.url),'utf8'),page.locale);
+    if(page.urlPath===localizedUrl(config,page.locale,'appeal/'))return translate(await readFile(new URL('./appeal.html',import.meta.url),'utf8'),page.locale);
     return html;
   });
   api.registerFilter('html:afterLayout',(html,{page,config})=>{
     html=translate(html,page.locale);
     const brand=messages(page.locale).brand;
     html=html.replaceAll('<span>ishare</span>','<span>'+brand+'</span>').replaceAll('aria-label="ishare"','aria-label="'+brand+'"').replaceAll('content="ishare"','content="'+brand+'"').replaceAll(' - ishare</title>',' - '+brand+'</title>');
-    for(const path of ['mine/','guide/','admin/','profile/'])html=html.replaceAll('href="/'+path+'"','href="'+localizedUrl(config,page.locale,path)+'"');
+    for(const path of ['mine/','guide/','admin/','profile/','appeal/'])html=html.replaceAll('href="/'+path+'"','href="'+localizedUrl(config,page.locale,path)+'"');
     html=html.replaceAll('class="brand" href="/"','class="brand" href="'+localizedUrl(config,page.locale,'')+'"');
     if(html.includes('id="publish-form"'))return html.replace('</body>','<script type="module" src="/ishare/app.js"></script></body>');
     if(html.includes('id="admin-gate"'))return html.replace('</body>','<script type="module" src="/ishare/admin-page.js"></script></body>');
+    if(html.includes('id="appeal-form"'))return html.replace('</body>','<script type="module" src="/ishare/appeal.js"></script></body>');
     if(html.includes('id="profile-form"'))return html.replace('</body>','<script type="module" src="/ishare/profile.js"></script></body>');
     if(html.includes('id="public-profile"'))return html.replace('</body>','<script type="module" src="/ishare/public-profile.js"></script></body>');
     if(html.includes('id="feed"'))return html.replace('</body>','<script type="module" src="/ishare/feed.js"></script></body>');

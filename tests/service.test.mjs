@@ -46,7 +46,7 @@ test('authentication, CSRF, publisher permissions and ownership protect privileg
 test('direct upload uses the resource account token, private uploads and opaque application IDs',async()=>{
   const {store,database}=repository(),env=environment(store),owner=await login(store),calls=[];
   const network=async(url,options)=>{
-    calls.push({url,options});assert.equal(options.redirect,'manual');assert.ok(url.includes('/accounts/'+env.IMAGES_ACCOUNT_ID+'/'));assert.equal(options.headers.Authorization,'Bearer '+env.MEDIA_API_TOKEN);
+    calls.push({url,options});assert.equal(options.redirect,'manual');assert.ok(url.includes('/accounts/'+env.STREAM_ACCOUNT_ID+'/'));assert.equal(options.headers.Authorization,'Bearer '+env.MEDIA_API_TOKEN);
     assert.equal(options.body.get('requireSignedURLs'),'true');assert.equal(options.body.get('creator'),'ishare:42');assert.equal(options.body.has('id'),false);
     return Response.json({success:true,result:{id:'provider-id-123456789012345',uploadURL:'https://upload.imagedelivery.net/capability'}});
   };
@@ -56,11 +56,11 @@ test('direct upload uses the resource account token, private uploads and opaque 
     assert.equal(store.list('42').items.length,1);
   }finally{database.close();}
 });
-test('unknown upstream outcomes retain reservations and are never silently retried',async()=>{
+test('unknown upstream outcomes are hidden from history and queued for automatic cleanup',async()=>{
   const {store,database}=repository(),env=environment(store),owner=await login(store);
   try{
     const response=await handle(request('create-upload',{...owner,body:{kind:'video',title:'Test',bytes:1024,mime:'video/mp4',duration:30}}),env,ctx,{requestProvider:async()=>{throw Error('timeout after allocation');}});
-    assert.equal(response.status,503);assert.equal(store.list('42').items[0].state,'uncertain');
+    assert.equal(response.status,503);assert.equal(store.list('42').items[0].state,'uncertain');assert.equal(store.history('42').items.length,0);assert.equal(store.pendingCleanup(now()+121).length,1);
   }finally{database.close();}
 });
 test('public metadata and standard oEmbed preserve attribution without provider URLs or fetch-based discovery',async()=>{

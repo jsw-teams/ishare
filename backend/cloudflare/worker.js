@@ -3,11 +3,13 @@ import { Repository } from './store.js';
 import { handle } from './service.js';
 import { provider } from './provider.js';
 import { ServiceError } from './security.js';
-import { rpcStore } from './rpc.js';
+import {finishRemoval,removeMedia} from './removal.js';
 
 export class ShareStore extends DurableObject {
-  constructor(ctx,env){super(ctx,env);this.repository=new Repository(ctx.storage.sql,fn=>ctx.storage.transactionSync(fn));}
-  invoke(method,args){try{return this.repository[method](...args);}catch(error){if(error instanceof ServiceError)return {__ishareError:error.message,status:error.status};throw error;}}
+  constructor(ctx,env){super(ctx,env);this.repository=new Repository(ctx.storage.sql,fn=>ctx.storage.transactionSync(fn));ctx.blockConcurrencyWhile(()=>this.scheduleCleanup());}
+  async scheduleCleanup(){const due=this.repository.nextCleanup(Math.floor(Date.now()/1000)),current=await this.ctx.storage.getAlarm();if(due===null){if(current!==null)await this.ctx.storage.deleteAlarm();}else if(current===null||due*1000<current)await this.ctx.storage.setAlarm(Math.max(Date.now()+1000,due*1000));}
+  async invoke(method,args){try{const result=this.repository[method](...args);if(['reserve','attach','uncertain','prepareRemoval','deleted','failed','publish','deletePost','erase','cleanup','makeSession','beginAuth','consumeAuth','logout','rate','delivery','setAccount','setQuotaSettings','resolveRight','discardPost'].includes(method))await this.scheduleCleanup();return result;}catch(error){if(error instanceof ServiceError)return {__ishareError:error.message,status:error.status};throw error;}}
+  async alarm(){const store=this.repository,upstream=provider(this.env),now=Math.floor(Date.now()/1000);for(const item of store.cleanup(now)){try{await finishRemoval(item,store,upstream);}catch{/* The next alarm retries only remaining work. */}}for(const item of store.pendingCleanup(now)){try{await removeMedia(item,store,upstream,item.owner,true,now,true);}catch{/* Unknown allocation is discovered by its exact application metadata. */}}store.cleanup(Math.floor(Date.now()/1000));await this.scheduleCleanup();}
   profile(...args){return this.invoke('profile',args);}
   setProfile(...args){return this.invoke('setProfile',args);}
   get(id){return this.invoke('get',[id]);}
@@ -44,18 +46,15 @@ export class ShareStore extends DurableObject {
   attach(...args){return this.invoke('attach',args);}
   failed(...args){return this.invoke('failed',args);}
   uncertain(...args){return this.invoke('uncertain',args);}
-  reconcile(...args){return this.invoke('reconcile',args);}
+  pendingCleanup(...args){return this.invoke('pendingCleanup',args);}
+  discardPost(...args){return this.invoke('discardPost',args);}
+  removalPlan(...args){return this.invoke('removalPlan',args);}
+  prepareRemoval(...args){return this.invoke('prepareRemoval',args);}
   publish(...args){return this.invoke('publish',args);}
   list(...args){return this.invoke('list',args);}
-  markDelete(...args){return this.invoke('markDelete',args);}
   deleted(...args){return this.invoke('deleted',args);}
   cleanup(...args){return this.invoke('cleanup',args);}
 }
 export default {
   fetch(request,env,ctx){return handle(request,env,ctx);},
-  async scheduled(_event,env){
-    const store=rpcStore(env);
-    const items=await store.cleanup(Math.floor(Date.now()/1000)),upstream=provider(env);
-    for(const item of items){try{await upstream.remove(item);await store.deleted(item.id);}catch{/* Retain the quota reservation and retry next hour. */}}
-  },
 };

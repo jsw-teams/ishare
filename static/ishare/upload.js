@@ -1,3 +1,4 @@
+import {uploadAddress} from './upload-address.js';
 function imageUpload(url,file,onProgress,signal,createRequest){
   return new Promise((resolve,reject)=>{
     if(signal?.aborted){reject(new DOMException('Upload paused','AbortError'));return;}
@@ -12,14 +13,12 @@ function imageUpload(url,file,onProgress,signal,createRequest){
   });
 }
 export async function uploadFile(file,grant,onProgress=()=>{},{signal,request=fetch,createRequest=()=>new XMLHttpRequest()}={}) {
-  const url=new URL(grant.uploadUrl);
-  if(url.protocol!=='https:'||url.username||url.password||!['upload.imagedelivery.net','upload.videodelivery.net'].includes(url.hostname))throw new Error('invalid_upload_url');
+  if(!['post','tus'].includes(grant.protocol))throw new Error('invalid_upload_protocol');
+  const url=uploadAddress(grant.uploadUrl,grant.protocol==='post'?'image':'video');
   const send=options=>request(url,{...options,credentials:'omit',redirect:'error',signal});
   if(grant.protocol==='post'){
-    if(url.hostname!=='upload.imagedelivery.net')throw new Error('invalid_upload_protocol');
     await imageUpload(url,file,onProgress,signal,createRequest);return;
   }
-  if(grant.protocol!=='tus'||url.hostname!=='upload.videodelivery.net')throw new Error('invalid_upload_protocol');
   let offset=0,attempts=0;
   const head=async()=>{const response=await send({method:'HEAD',headers:{'Tus-Resumable':'1.0.0'}});if(!response.ok)throw new Error('upload_failed');const n=Number(response.headers.get('Upload-Offset'));if(!Number.isSafeInteger(n)||n<0||n>file.size)throw new Error('invalid_upload_offset');const length=Number(response.headers.get('Upload-Length'));if(length!==file.size)throw new Error('different_file');return n;};
   offset=await head();onProgress(offset/file.size);
@@ -32,7 +31,7 @@ export async function uploadFile(file,grant,onProgress=()=>{},{signal,request=fe
       if(!Number.isSafeInteger(next)||next!==end)throw new Error('invalid_upload_offset');offset=next;attempts=0;onProgress(offset/file.size);
     }catch(error){
       if(signal?.aborted||++attempts>3)throw error;
-      await new Promise(resolve=>setTimeout(resolve,attempts*1000));offset=await head();
+      await new Promise((resolve,reject)=>{const abort=()=>{clearTimeout(timer);reject(new DOMException('Upload cancelled','AbortError'));},timer=setTimeout(()=>{signal?.removeEventListener('abort',abort);resolve();},attempts*1000);signal?.addEventListener('abort',abort,{once:true});});offset=await head();
     }
   }
 }
