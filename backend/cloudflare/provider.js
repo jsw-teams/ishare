@@ -88,6 +88,7 @@ export function imageAddress(env,item) {
 export async function videoAddress(env,item,now,store,request=fetch) {
   resourceConfiguration(env,'video');providerId(item.provider_id);
   const cached=await store.videoToken(item.id,now);if(cached?.startsWith('https://'))return new URL(cached);
-  const upstream=provider(env,request),address=await upstream.playbackAddress(item);
-  const token=cached||await upstream.playbackToken(item);address.pathname=`/${token}/manifest/video.m3u8`;await store.saveVideoToken(item.id,address.href,now+3300);return address;
+  const upstream=provider(env,request);
+  const [address,token]=await Promise.all([upstream.playbackAddress(item),cached||upstream.playbackToken(item)]);
+  address.pathname=`/${token}/manifest/video.m3u8`;await store.saveVideoToken(item.id,address.href,now+3300);return address;
 }

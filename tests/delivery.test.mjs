@@ -3,9 +3,22 @@ import assert from 'node:assert/strict';
 import {rewriteManifest,openResource,deliver,upstreamUrl,sealResource} from '../backend/cloudflare/delivery.js';
 import {b64,random} from '../backend/cloudflare/security.js';
 import {environment,repository,media,limits,now} from './helpers.mjs';
+import {videoAddress} from '../backend/cloudflare/provider.js';
 const env=environment({}),item={id:'a'.repeat(32),kind:'video',provider_id:'provider-id-123456789012345'};
 const token='header.'+b64(new TextEncoder().encode(JSON.stringify({sub:item.provider_id})))+'.signature';
 const base='https://customer-testcustomer.cloudflarestream.com/'+token+'/manifest/video.m3u8';
+
+test('cold playback resolves address and signature concurrently and reuses the private result',async()=>{
+ let calls=0,cached=null,tokenStarted=false;const store={videoToken:async()=>cached,saveVideoToken:async(_id,value)=>{cached=value;}};
+ const request=async(_url,options)=>{
+  calls++;
+  if(options.method==='POST'){tokenStarted=true;return Response.json({success:true,result:{token}});}
+  await new Promise(resolve=>setTimeout(resolve,30));assert.equal(tokenStarted,true,'Token request starts before metadata completes');
+  return Response.json({success:true,result:{requireSignedURLs:true,playback:{hls:'https://customer-testcustomer.cloudflarestream.com/'+item.provider_id+'/manifest/video.m3u8'}}});
+ };
+ assert.equal((await videoAddress(env,item,now(),store,request)).href,base);assert.equal(calls,2);
+ assert.equal((await videoAddress(env,item,now(),store,request)).href,base);assert.equal(calls,2,'Cache bypasses both provider calls');
+});
 
 test('video thumbnails proxy signed image bytes through an opaque URL without playback billing',async()=>{
  const {store,database}=repository(),settings=environment(store),video={...item,owner:'42',mime:'video/mp4',duration:10};let tokens=0,fetches=0;store.reserve(media({...video}),limits,now());store.attach(video.id,video.provider_id,'',now());store.publish(video.id,'42',10,now());

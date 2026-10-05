@@ -14,7 +14,7 @@
     "icons:sync": "node tools/sync-icons.mjs"
   },
   "dependencies": {
-    "@jsw-teams/media-viewer": "https://codeload.github.com/jsw-teams/media-viewer/tar.gz/1e26372ce2b8b707917937fb93dcfbcaf5f95230",
+    "@jsw-teams/media-viewer": "https://codeload.github.com/jsw-teams/media-viewer/tar.gz/3be6504b4996257e8bba3463ae93f87315d8ba0a",
     "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/f27d808133076d36835b04af53491bc5d396b524"
   },
   "devDependencies": {
