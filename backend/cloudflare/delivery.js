@@ -76,7 +76,8 @@ export async function deliver(request,env,item,resource,store,context,{requestUp
   const cacheKey=imageCacheKey||new Request(new URL('/__ishare-cache/'+item.id+'/'+await digest(path),request.url));
   if(!image&&!manifest&&!range&&cache){const hit=await cache.match(cacheKey);if(hit)return new Response(request.method==='HEAD'?null:hit.body,{status:hit.status,headers:hit.headers});}
   let response;
-  try{response=await requestUpstream(upstream,{method:'GET',headers:{...(original?{Authorization:'Bearer '+env.MEDIA_API_TOKEN}:{}),...(item.kind==='image'&&!original?{Accept:format==='avif'?'image/avif,image/webp,image/*':format==='webp'?'image/webp,image/*':'image/jpeg,image/png,image/gif'}:{}),...(range?{Range:range}:{})},redirect:'manual',signal:AbortSignal.timeout(20000)});}catch{fail('media_unavailable',503);}
+  const connection=new AbortController(),deadline=setTimeout(()=>connection.abort(),20000);
+  try{response=await requestUpstream(upstream,{method:'GET',headers:{...(original?{Authorization:'Bearer '+env.MEDIA_API_TOKEN}:{}),...(item.kind==='image'&&!original?{Accept:format==='avif'?'image/avif,image/webp,image/*':format==='webp'?'image/webp,image/*':'image/jpeg,image/png,image/gif'}:{}),...(range?{Range:range}:{})},redirect:'manual',signal:AbortSignal.any([request.signal,connection.signal])});}catch{fail('media_unavailable',503);}finally{clearTimeout(deadline);}
   if(![200,206].includes(response.status)){await response.body?.cancel();fail([404,410].includes(response.status)?'media_missing':'media_unavailable',[404,410].includes(response.status)?404:502);}
   const mime=(response.headers.get('content-type')||'').split(';')[0].trim().toLowerCase();
   if(image&&!/^image\/(jpeg|png|webp|avif|gif)$/.test(mime)){await response.body?.cancel();fail('invalid_upstream',502);}

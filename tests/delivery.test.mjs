@@ -70,6 +70,20 @@ test('image delivery returns bytes without leaking provider headers or redirects
   assert.equal(response.status,200);for(const name of ['Location','Content-Location','Link'])assert.equal(response.headers.get(name),null);assert.deepEqual([...new Uint8Array(await response.arrayBuffer())],[1,2,3]);
 });
 
+test('a slow original continues streaming beyond the upstream response-header deadline', {timeout:30000},async t=>{
+ const image={id:item.id,kind:'image',provider_id:item.provider_id};let timer,upstreamSignal;
+ t.after(()=>clearTimeout(timer));
+ const response=await deliver(new Request('https://ishare.js.gripe/i/'+item.id+'/original'),env,image,'original',{delivery(){}},{waitUntil(){}},{cache:null,requestUpstream:async(_url,{signal})=>{
+  upstreamSignal=signal;
+  return new Response(new ReadableStream({start(controller){
+   const abort=()=>{clearTimeout(timer);controller.error(new Error('stream interrupted'));};signal.addEventListener('abort',abort,{once:true});
+   controller.enqueue(new Uint8Array([1]));timer=setTimeout(()=>{signal.removeEventListener('abort',abort);controller.enqueue(new Uint8Array([2]));controller.close();},20100);
+  },cancel(){clearTimeout(timer);}}),{headers:{'Content-Type':'image/png'}});
+ }});
+ const reader=response.body.getReader();assert.deepEqual([...(await reader.read()).value],[1]);
+ assert.deepEqual([...(await reader.read()).value],[2]);assert.equal((await reader.read()).done,true);assert.equal(upstreamSignal.aborted,false);
+});
+
 test('long video segments renew private upstream tokens without changing public resource tickets',async()=>{
   const {store,database}=repository(),settings=environment(store),now=Math.floor(Date.now()/1000),video={...item,owner:'42',duration:7200};
   const expired='header.'+b64(new TextEncoder().encode(JSON.stringify({sub:item.provider_id,exp:now-100})))+'.expired',fresh='header.'+b64(new TextEncoder().encode(JSON.stringify({sub:item.provider_id,exp:now+3600})))+'.fresh';

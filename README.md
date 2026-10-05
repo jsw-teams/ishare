@@ -18,6 +18,12 @@ Write a story first, then add multiple image or video attachments. Publish compl
 
 ![User administration with selected tabs and graphical usage, local demonstration data](docs/images/admin-preview.png)
 
+![Shared media-viewer controls in a narrow-screen local component demo](docs/images/media-player-mobile.png)
+
+The player inherits the page palette instead of a fixed accent. Current / total time stays together, with the seek bar on its own row. HLS uses managed adaptive playback on MSE-capable browsers, begins with a playable small rendition and adjusts sustainable bandwidth and bounded buffering for 2x speed. The poster and stored duration are available before play; video segments load only on demand.
+
+Preview renditions use network/data-saving hints where available: slow connections start at 640 px; moderate or unknown connections allow 1280 px; faster connections allow 2048 px, with the browser selecting a suitable width. Cards stay lazy and show attachment information below the picture. Opening the viewer still requests the unchanged original. The media proxy times out while waiting for upstream headers, then streams the body without a fixed 20-second cutoff; incremental painting depends on the image format and browser.
+
 ```mermaid
 flowchart LR
   A[Publisher] -->|GitHub sign-in and fixed /api| W[ishare Worker]
