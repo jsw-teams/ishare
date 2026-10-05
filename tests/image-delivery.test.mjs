@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {deliver} from '../backend/cloudflare/delivery.js';
 import {environment} from './helpers.mjs';
 
-test('display variants are private, signed, responsive and cached by format; originals require the explicit save route',async()=>{
+test('display variants are private, signed, responsive and cached by format; originals stay unchanged and reuse their bounded cache',async()=>{
  const env=environment({}),item={id:'a'.repeat(32),owner:'42',kind:'image',provider_id:'private-image',title:'photo.png',mime:'image/png'},signing='existing-private-signing-key',calls=[],upstreams=[],entries=new Map(),pending=[];
  const context={waitUntil(promise){pending.push(promise);}},store={delivery(){}},cache={async match(key){return entries.get(key.url)?.clone();},async put(key,response){entries.set(key.url,response);}};
  const requestProvider=async(address,options)=>{
@@ -25,7 +25,7 @@ test('display variants are private, signed, responsive and cached by format; ori
   assert.equal(await(await deliver(request,env,item,variant,store,context,options)).text(),'optimized');
  }
  assert.deepEqual(upstreams,['/accountHash/private-image/isharePreview','/accountHash/private-image/ishareMedium','/accountHash/private-image/ishareDisplay']);assert.equal(calls.filter(call=>call.path.endsWith('/keys')).length,1);assert.equal(calls.filter(call=>call.method==='PATCH').length,1);assert.equal(calls.filter(call=>call.method==='POST').length,2);
- const original=await deliver(new Request('https://ishare.js.gripe/i/'+item.id+'/original'),env,item,'original',store,context,options);assert.equal(await original.text(),'original');assert.match(original.headers.get('Content-Disposition'),/^attachment;/);assert.equal(original.headers.get('Cache-Control'),'no-store');
+ const original=await deliver(new Request('https://ishare.js.gripe/i/'+item.id+'/original'),env,item,'original',store,context,options);assert.equal(await original.text(),'original');assert.match(original.headers.get('Content-Disposition'),/^attachment;/);assert.equal(original.headers.get('Cache-Control'),'public, max-age=300');await Promise.all(pending);const count=upstreams.length;const reused=await deliver(new Request('https://ishare.js.gripe/i/'+item.id+'/original'),env,item,'original',store,context,options);assert.equal(await reused.text(),'original');assert.equal(upstreams.length,count);
 });
 
 test('optimized image failures never fall back to original downloads',async()=>{

@@ -14,3 +14,9 @@ test('localized post viewers derive discovery metadata from the caption without 
  const site='https://ishare.js.gripe',env={ASSETS:{fetch:async req=>new Response(await readFile('dist'+new URL(req.url).pathname))}},post={id:'b'.repeat(32),kind:'post',caption:'Only this story',author:JSON.stringify({id:'42',name:'Bear',login:'jsw-teams'}),media:[],source_name:'',source_url:'',created:1,published:2,state:'published'};
  for(const locale of ['en','zh-CN','zh-TW']){const response=await renderPage(post,env,site,true,locale),html=await response.text();assert.match(html,new RegExp('<html lang="'+locale+'" class="embedded">'));assert.match(html,/<p class="caption">Only this story<\/p>/);assert.doesNotMatch(html,/<h1|post-title|@jsw-teams|share-shell|undefined/);assert.match(response.headers.get('Vary'),/Accept-Language/);}
 });
+
+
+test('post images are lazy previews with explicit originals and video poster and duration are available before playing',async()=>{
+ const site='https://ishare.js.gripe',env={ASSETS:{fetch:async request=>new Response(await readFile('dist'+new URL(request.url).pathname))}},base={author:JSON.stringify({id:'42',name:'Bear',login:'bear'}),caption:'',title:'Attachment',source_name:'',source_url:'',created:1,published:2,state:'published'},post={...base,id:'c'.repeat(32),kind:'post',media:[{...base,id:'a'.repeat(32),kind:'image'},{...base,id:'b'.repeat(32),kind:'video',duration:119}]};
+ const html=await(await renderPage(post,env,site)).text();assert.match(html,/<link rel="preload" as="image" href="https:\/\/ishare.js.gripe\/v\/[a-f0-9]+\/thumbnail">/);assert.match(html,/<video[^>]+data-duration="119"/);assert.match(html,/<img data-media[^>]+data-original="https:\/\/ishare.js.gripe\/i\/[a-f0-9]+\/original"[^>]+src="https:\/\/ishare.js.gripe\/i\/[a-f0-9]+\/public"[^>]+loading="lazy"/);
+});

@@ -48,23 +48,23 @@ export async function deliver(request,env,item,resource,store,context,{requestUp
   const now=Math.floor(Date.now()/1000);
   let upstream,manifest=false;const thumbnail=item.kind==='video'&&resource==='thumbnail',image=item.kind==='image'||thumbnail,original=item.kind==='image'&&resource==='original';
   const accept=request.headers.get('Accept')||'',format=accept.includes('image/avif')?'avif':accept.includes('image/webp')?'webp':'default';
-  const imageCacheKey=item.kind==='image'?new Request(new URL('/__ishare-cache/'+item.id+'/optimized-'+resource+'-'+format,request.url)):null;
-  const coverKey=thumbnail?new Request(new URL('/__ishare-cache/'+item.id+'/cover',request.url)):null;
+  const imageCacheKey=item.kind==='image'?new Request(new URL('/__ishare-cache/'+item.id+'/'+(original?'original':'optimized-'+resource+'-'+format),request.url)):null;
+  const coverKey=thumbnail?new Request(new URL('/__ishare-cache/'+item.id+'/cover-frame-1s',request.url)):null;
   const coverResponse=cover=>new Response(request.method==='HEAD'?null:cover.body,{headers:headers({'Content-Type':cover.mime,'Cache-Control':'public, max-age=300','Cross-Origin-Resource-Policy':'cross-origin'},true)});
   if(thumbnail){
     if(cache){const hit=await cache.match(coverKey);if(hit)return new Response(request.method==='HEAD'?null:hit.body,{status:hit.status,headers:hit.headers});}
-    const cover=await store.videoCover(item.id);if(cover){const result=coverResponse(cover);if(cache&&request.method!=='HEAD')context.waitUntil(cache.put(coverKey,result.clone()).catch(()=>{}));return result;}
+    const cover=await store.videoCover(item.id);if(cover&&['frame-1s','provided'].includes(cover.source)){const result=coverResponse(cover);if(cache&&request.method!=='HEAD')context.waitUntil(cache.put(coverKey,result.clone()).catch(()=>{}));return result;}
     if(request.method==='HEAD')return new Response(null,{headers:headers({'Content-Type':'image/jpeg','Cache-Control':'no-store'},true)});
   }
   if(item.kind==='image') {
     if(!['public','thumbnail','medium','original'].includes(resource))fail('invalid_variant',404);
     if(request.method==='HEAD')return new Response(null,{headers:headers({'Content-Type':item.mime||'image/jpeg','Cache-Control':'no-store'},true)});
     await store.delivery(item.owner,'image',1,now);
-    if(!original&&cache){const hit=await cache.match(imageCacheKey);if(hit)return hit;}
+    if(!request.headers.has('Range')&&cache){const hit=await cache.match(imageCacheKey);if(hit)return hit;}
     upstream=original?imageAddress(env,item):await optimizedImage(env,item,resource,requestProvider);
   }else {
     upstream=resource==='master.m3u8'||thumbnail?await videoAddress(env,item,now,store,requestProvider):await openResource(resource,item.id,await store.key(),now,env,item);
-    if(thumbnail){upstream.pathname=upstream.pathname.replace('/manifest/video.m3u8','/thumbnails/thumbnail.jpg');upstream.search='time=0s&width=640&height=360&fit=clip';}
+    if(thumbnail){upstream.pathname=upstream.pathname.replace('/manifest/video.m3u8','/thumbnails/thumbnail.jpg');upstream.search='time='+(item.duration<=1?'0s':'1s')+'&width=1280&height=1280&fit=clip';}
     else if(resource!=='master.m3u8'&&upstream.pathname.split('/')[1]!==item.provider_id){const current=await videoAddress(env,item,now,store,requestProvider);upstream.pathname='/'+current.pathname.split('/')[1]+'/'+upstream.pathname.split('/').slice(2).join('/');}
     manifest=/\.m3u8$/.test(upstream.pathname);
   }
@@ -88,7 +88,7 @@ export async function deliver(request,env,item,resource,store,context,{requestUp
     const result=coverResponse(await store.saveVideoCover(item.id,body,mime));if(cache)context.waitUntil(cache.put(coverKey,result.clone()).catch(()=>{}));return result;
   }
   if(!image&&!/^(application\/(vnd\.apple\.mpegurl|x-mpegurl|octet-stream)|video\/(mp2t|mp4|iso.segment)|audio\/(mp4|aac|mpeg)|text\/vtt)$/.test(mime)){await response.body?.cancel();fail('invalid_upstream',502);}
-  const resultHeaders=headers({'Content-Type':manifest?'application/vnd.apple.mpegurl':mime,'Cache-Control':manifest||original?'no-store':'public, max-age=300','Cross-Origin-Resource-Policy':'cross-origin'},true);
+  const resultHeaders=headers({'Content-Type':manifest?'application/vnd.apple.mpegurl':mime,'Cache-Control':manifest?'no-store':'public, max-age=300','Cross-Origin-Resource-Policy':'cross-origin'},true);
   if(item.kind==='image'&&!original)resultHeaders.set('Vary','Accept');
   if(original)resultHeaders.set('Content-Disposition',"attachment; filename*=UTF-8''"+encodeURIComponent(item.title||'image').replace(/[!'()*]/g,char=>'%'+char.charCodeAt(0).toString(16)));
   if(!manifest&&/^\d+$/.test(response.headers.get('Content-Length')||''))resultHeaders.set('Content-Length',response.headers.get('Content-Length'));
@@ -96,6 +96,6 @@ export async function deliver(request,env,item,resource,store,context,{requestUp
   let body=response.body;
   if(manifest){const text=await response.text();body=await rewriteManifest(text,upstream,item.id,await store.key(),now+Math.max(3600,(item.duration||0)+600),env);}
   const result=new Response(body,{status:response.status,headers:resultHeaders});
-  if(!manifest&&!original&&!range&&cache)context.waitUntil(cache.put(cacheKey,result.clone()).catch(()=>{}));
+  if(!manifest&&!range&&cache)context.waitUntil(cache.put(cacheKey,result.clone()).catch(()=>{}));
   return request.method==='HEAD'?new Response(null,{status:result.status,headers:result.headers}):result;
 }

@@ -18,7 +18,7 @@ export class Repository {
     CREATE INDEX IF NOT EXISTS posts_feed ON posts(state,listed,created);
     CREATE INDEX IF NOT EXISTS posts_owner ON posts(owner,state,created);
     CREATE TABLE IF NOT EXISTS attachments (post_id TEXT NOT NULL, media_id TEXT NOT NULL UNIQUE, position INTEGER NOT NULL, PRIMARY KEY(post_id,position));
-    CREATE TABLE IF NOT EXISTS video_covers (media_id TEXT PRIMARY KEY, body BLOB NOT NULL, mime TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS video_covers (media_id TEXT PRIMARY KEY, body BLOB NOT NULL, mime TEXT NOT NULL, source TEXT NOT NULL DEFAULT 'frame-0s');
     CREATE TABLE IF NOT EXISTS auth (id TEXT PRIMARY KEY, verifier TEXT NOT NULL, expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, identity TEXT NOT NULL, csrf TEXT NOT NULL, expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS limits (id TEXT PRIMARY KEY, count INTEGER NOT NULL, expires INTEGER NOT NULL);
@@ -27,6 +27,7 @@ export class Repository {
     CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, identity TEXT NOT NULL, policy TEXT NOT NULL DEFAULT '{}', blocked INTEGER NOT NULL DEFAULT 0, note TEXT NOT NULL DEFAULT '', updated INTEGER NOT NULL, pending TEXT, effective INTEGER, erasing INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL, target TEXT NOT NULL, changes TEXT NOT NULL, created INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS rights (id TEXT PRIMARY KEY, owner TEXT NOT NULL, kind TEXT NOT NULL, message TEXT NOT NULL, state TEXT NOT NULL, response TEXT NOT NULL DEFAULT '', created INTEGER NOT NULL, due INTEGER NOT NULL, resolved INTEGER);`);
+    if(![...sql.exec('PRAGMA table_info(video_covers)')].some(column=>column.name==='source'))sql.exec("ALTER TABLE video_covers ADD COLUMN source TEXT NOT NULL DEFAULT 'frame-0s'");
     if([...sql.exec('PRAGMA table_info(posts)')].some(column=>column.name==='title'))sql.exec('ALTER TABLE posts DROP COLUMN title');
   }
   profile(owner,includeErasing=false){const row=this.one('SELECT u.identity,u.erasing,p.display_name,p.bio FROM users u LEFT JOIN profiles p ON p.id=u.id WHERE u.id=?',owner);if(!row||row.erasing&&!includeErasing)fail('not_found',404);const identity=JSON.parse(row.identity);return {id:owner,login:identity.login,displayName:row.display_name||identity.name||identity.login,bio:row.bio||''};}
@@ -60,8 +61,8 @@ export class Repository {
   key() { return this.atomic(()=>{let key=this.one("SELECT value FROM settings WHERE id='delivery-key'")?.value;if(!key){key=random();this.sql.exec("INSERT INTO settings VALUES ('delivery-key',?)",key);}return key;}); }
   videoToken(id,now) {const row=this.one('SELECT value FROM settings WHERE id=?','video:'+id);if(!row)return null;const value=JSON.parse(row.value);return value.expires>now?value.token:null;}
   saveVideoToken(id,token,expires) {this.sql.exec('INSERT INTO settings VALUES (?,?) ON CONFLICT(id) DO UPDATE SET value=excluded.value','video:'+id,JSON.stringify({token,expires}));}
-  videoCover(id){const row=this.one('SELECT body,mime FROM video_covers WHERE media_id=?',id);return row?{body:new Uint8Array(row.body),mime:row.mime}:null;}
-  saveVideoCover(id,body,mime){const item=this.get(id);if(!item||item.kind!=='video'||item.state!=='published')fail('not_found',404);if(!(body instanceof Uint8Array)||body.byteLength<1||body.byteLength>2_000_000||mime!=='image/jpeg')fail('invalid_cover');this.sql.exec('INSERT INTO video_covers VALUES (?,?,?) ON CONFLICT(media_id) DO NOTHING',id,body.buffer.slice(body.byteOffset,body.byteOffset+body.byteLength),mime);return this.videoCover(id);}
+  videoCover(id){const row=this.one('SELECT body,mime,source FROM video_covers WHERE media_id=?',id);return row?{body:new Uint8Array(row.body),mime:row.mime,source:row.source}:null;}
+  saveVideoCover(id,body,mime,source='frame-1s'){const item=this.get(id);if(!item||item.kind!=='video'||item.state!=='published')fail('not_found',404);if(!['frame-1s','provided'].includes(source)||!(body instanceof Uint8Array)||body.byteLength<1||body.byteLength>2_000_000||mime!=='image/jpeg')fail('invalid_cover');this.sql.exec("INSERT INTO video_covers(media_id,body,mime,source) VALUES (?,?,?,?) ON CONFLICT(media_id) DO UPDATE SET body=excluded.body,mime=excluded.mime,source=excluded.source WHERE video_covers.source='frame-0s'",id,body.buffer.slice(body.byteOffset,body.byteOffset+body.byteLength),mime,source);return this.videoCover(id);}
   rate(key,max,now,period=600) {
     return this.atomic(()=>{const k=key+':'+Math.floor(now/period);const row=this.one('SELECT count FROM limits WHERE id=?',k);if((row?.count||0)>=max)fail('rate_limited',429);this.sql.exec('INSERT INTO limits VALUES (?,1,?) ON CONFLICT(id) DO UPDATE SET count=count+1',k,now+period*2);});
   }
