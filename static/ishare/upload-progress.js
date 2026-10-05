@@ -2,7 +2,7 @@ import {icons} from './icons.js';
 export function uploadProgress(t){
  const root=document.querySelector('#upload-status'),bar=document.querySelector('#progress'),stage=document.querySelector('#upload-stage'),current=document.querySelector('#upload-current'),percent=document.querySelector('#upload-percent'),bytes=document.querySelector('#upload-bytes'),result=document.querySelector('#upload-result'),cancel=document.querySelector('#cancel'),icon=document.querySelector('#upload-state-icon');
  const dismiss=document.querySelector('#upload-dismiss');dismiss.addEventListener('click',()=>root.close());
- cancel.setAttribute('aria-label',t('cancelUpload'));cancel.innerHTML=icons.close;let entries=[],showAttachments=true;
+ cancel.setAttribute('aria-label',t('cancelUpload'));let entries=[],showAttachments=true;
  const size=entry=>entry.file?.size??entry.bytes??entry.record?.bytes??0;
  const format=value=>{const unit=value>=1073741824?'GB':value>=1048576?'MB':'KB',scale=unit==='GB'?1073741824:unit==='MB'?1048576:1024;return new Intl.NumberFormat(document.documentElement.lang,{maximumFractionDigits:1}).format(value/scale)+' '+unit;};
  function measure(){const total=entries.reduce((sum,entry)=>sum+size(entry),0),loaded=entries.reduce((sum,entry)=>sum+size(entry)*(entry.record||entry.uploaded?1:entry.loaded||0),0);bytes.textContent=total?t('sentBytes')+' '+format(loaded)+' / '+format(total):'';percent.hidden=!total;if(total){bar.value=loaded/total;percent.textContent=Math.round(loaded/total*100)+'%';}else bar.removeAttribute('value');}

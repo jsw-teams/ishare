@@ -1,3 +1,4 @@
+import {icons} from '../../static/ishare/icons.js';
 import {readFile} from 'node:fs/promises';
 import {messages} from '../../static/ishare/i18n.js';
 import {localizedUrl} from 'edgepress/src/i18n.js';
@@ -13,7 +14,7 @@ export default function application(api){
     return html;
   });
   api.registerFilter('html:afterLayout',(html,{page,config})=>{
-    html=translate(html,page.locale);
+    html=translate(html,page.locale).replace(/ISHARE_ICON_([A-Z]+)/g,(_match,key)=>icons[key.toLowerCase()]);
     const brand=messages(page.locale).brand;
     html=html.replaceAll('<span>ishare</span>','<span>'+brand+'</span>').replaceAll('aria-label="ishare"','aria-label="'+brand+'"').replaceAll('content="ishare"','content="'+brand+'"').replaceAll(' - ishare</title>',' - '+brand+'</title>');
     for(const path of ['mine/','guide/','admin/','profile/','appeal/'])html=html.replaceAll('href="/'+path+'"','href="'+localizedUrl(config,page.locale,path)+'"');

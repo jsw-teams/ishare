@@ -50,3 +50,5 @@ dialog.upload-status{width:min(540px,calc(100vw - 32px));max-height:85vh;overflo
 @media(max-width:540px){.topbar{column-gap:.4rem}.topbar .actions{gap:.3rem}.topbar .actions select{max-width:104px;font-size:.8rem}.publisher-gate:has(#publisher-login){display:block;padding:1rem}.publisher-gate .gate-icon{margin-bottom:.75rem}.publisher-gate #publisher-login{width:100%;white-space:nowrap}.publisher-gate>div{min-width:0}}
 
 .upload-state-icon svg{width:28px;height:28px}.upload-close svg,.video-preview-placeholder svg,.video-badge svg{width:22px;height:22px;flex-shrink:0}.video-badge{display:inline-flex;align-items:center;gap:.35rem}.quota-card{min-height:106px}
+
+.account-chevron{display:inline-flex;width:16px;height:16px}.account-chevron svg{width:16px;height:16px}.gate-icon svg{width:26px;height:26px}.upload-symbol{display:inline-flex}.upload-symbol svg{width:28px;height:28px}
