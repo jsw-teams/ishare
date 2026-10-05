@@ -5,7 +5,7 @@ export function postPreview(item,t){
   const attachments=item.kind==='post'?item.media:[item],first=attachments[0];
   if(first){
     const media=document.createElement('div'),link=document.createElement('a'),img=document.createElement('img');media.className='post-preview';link.href=item.shareUrl;link.setAttribute('aria-label',t('openPost'));
-    img.src='/'+(first.kind==='image'?'i':'v')+'/'+first.id+'/thumbnail';img.alt=first.title||t('openPost');img.loading='lazy';img.decoding='async';link.append(img);
+    img.src='/'+(first.kind==='image'?'i':'v')+'/'+first.id+'/thumbnail';if(first.kind==='image'){img.srcset='/i/'+first.id+'/thumbnail 640w, /i/'+first.id+'/medium 1280w';img.sizes='(max-width: 720px) 100vw, 600px';}img.alt=first.title||t('openPost');img.loading='lazy';img.decoding='async';link.append(img);
     if(first.kind==='video'){const badge=document.createElement('span');badge.className='video-badge';badge.textContent='▶ '+t('openVideo');link.append(badge);}
     if(attachments.length>1){const count=document.createElement('span');count.className='attachment-count';count.textContent='1 / '+attachments.length;link.append(count);}
     media.append(link);card.append(media);watchImage(img);

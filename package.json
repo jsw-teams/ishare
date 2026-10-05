@@ -13,8 +13,8 @@
     "deploy:cloudflare": "npm run deploy"
   },
   "dependencies": {
-    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/d6feb7b30f3795bac8f6fb9a185f2cfb2f6a4b09",
-    "hls.js": "^1.7.3"
+    "@jsw-teams/media-viewer": "https://codeload.github.com/jsw-teams/media-viewer/tar.gz/5a27e804fcd40ca0618f5fe958e37a323b28969a",
+    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/707682b080209379cf4cc0a1303f202fc9d80a8f"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

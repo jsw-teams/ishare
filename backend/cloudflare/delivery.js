@@ -1,12 +1,13 @@
 import { b64, unb64, digest, fail, headers } from './security.js';
 import { imageAddress, videoAddress } from './provider.js';
+import {optimizedImage} from './image-delivery.js';
 const encoder=new TextEncoder();
 async function key(secret){return crypto.subtle.importKey('raw',unb64(secret),'AES-GCM',false,['encrypt','decrypt']);}
 export function upstreamUrl(value,base,env) {
   let url;try{url=base?new URL(value,base):new URL(value);}catch{fail('invalid_manifest',502);}
   if(url.protocol!=='https:'||!/^customer-[a-z0-9]+\.cloudflarestream\.com$/.test(url.hostname)||url.port||url.username||url.password||url.hash||url.href.length>6000)fail('invalid_manifest',502);
   // Every resource must remain in this video's signed namespace; no generic forward proxy.
-  if(base&&(url.hostname!==new URL(base).hostname||url.pathname.split('/')[1]!==new URL(base).pathname.split('/')[1]))fail('invalid_manifest',502);
+  if(base){const parent=new URL(base),namespace=parent.pathname.split('/')[1];let videoId;try{videoId=JSON.parse(new TextDecoder().decode(unb64(namespace.split('.')[1]))).sub;}catch{}if(url.hostname!==parent.hostname||url.pathname.split('/')[1]!==namespace&&url.pathname.split('/')[1]!==videoId)fail('invalid_manifest',502);}
   if(/%(?:2f|5c|2e|00)/i.test(url.pathname)||url.pathname.includes('\\'))fail('invalid_manifest',502);
   return url;
 }
@@ -22,7 +23,7 @@ export async function openResource(ticket,media,secret,now,env,item) {
   if(payload.id!==media||!Number.isSafeInteger(payload.exp)||payload.exp<now||payload.exp>now+Math.max(3600,(item.duration||0)+600))fail('expired_ticket',404);
   const url=upstreamUrl(payload.url,null,env);
   if(!Number.isFinite(payload.seconds)||payload.seconds<0||payload.seconds>120)fail('invalid_ticket',404);url.ishareSeconds=payload.seconds;
-  try {const token=JSON.parse(new TextDecoder().decode(unb64(url.pathname.split('/')[1].split('.')[1])));if(token.sub!==item.provider_id)fail('invalid_ticket',404);} catch {fail('invalid_ticket',404);}
+  if(url.pathname.split('/')[1]!==item.provider_id){try{const token=JSON.parse(new TextDecoder().decode(unb64(url.pathname.split('/')[1].split('.')[1])));if(token.sub!==item.provider_id)fail('invalid_ticket',404);}catch{fail('invalid_ticket',404);}}
   return url;
 }
 export async function rewriteManifest(body,base,media,secret,expires,env) {
@@ -45,7 +46,9 @@ export async function rewriteManifest(body,base,media,secret,expires,env) {
 
 export async function deliver(request,env,item,resource,store,context,{requestUpstream=fetch,requestProvider=fetch,cache=globalThis.caches?.default}={}) {
   const now=Math.floor(Date.now()/1000);
-  let upstream,manifest=false;const thumbnail=item.kind==='video'&&resource==='thumbnail',image=item.kind==='image'||thumbnail;
+  let upstream,manifest=false;const thumbnail=item.kind==='video'&&resource==='thumbnail',image=item.kind==='image'||thumbnail,original=item.kind==='image'&&resource==='original';
+  const accept=request.headers.get('Accept')||'',format=accept.includes('image/avif')?'avif':accept.includes('image/webp')?'webp':'default';
+  const imageCacheKey=item.kind==='image'?new Request(new URL('/__ishare-cache/'+item.id+'/optimized-'+resource+'-'+format,request.url)):null;
   const coverKey=thumbnail?new Request(new URL('/__ishare-cache/'+item.id+'/cover',request.url)):null;
   const coverResponse=cover=>new Response(request.method==='HEAD'?null:cover.body,{headers:headers({'Content-Type':cover.mime,'Cache-Control':'public, max-age=300','Cross-Origin-Resource-Policy':'cross-origin'},true)});
   if(thumbnail){
@@ -54,25 +57,28 @@ export async function deliver(request,env,item,resource,store,context,{requestUp
     if(request.method==='HEAD')return new Response(null,{headers:headers({'Content-Type':'image/jpeg','Cache-Control':'no-store'},true)});
   }
   if(item.kind==='image') {
-    if(!['public','thumbnail'].includes(resource))fail('invalid_variant',404);
-    upstream=imageAddress(env,item);
+    if(!['public','thumbnail','medium','original'].includes(resource))fail('invalid_variant',404);
+    if(request.method==='HEAD')return new Response(null,{headers:headers({'Content-Type':item.mime||'image/jpeg','Cache-Control':'no-store'},true)});
+    await store.delivery(item.owner,'image',1,now);
+    if(!original&&cache){const hit=await cache.match(imageCacheKey);if(hit)return hit;}
+    upstream=original?imageAddress(env,item):await optimizedImage(env,item,resource,requestProvider);
   }else {
     upstream=resource==='master.m3u8'||thumbnail?await videoAddress(env,item,now,store,requestProvider):await openResource(resource,item.id,await store.key(),now,env,item);
     if(thumbnail){upstream.pathname=upstream.pathname.replace('/manifest/video.m3u8','/thumbnails/thumbnail.jpg');upstream.search='time=0s&width=640&height=360&fit=clip';}
-    else if(resource!=='master.m3u8'){const current=await videoAddress(env,item,now,store,requestProvider);upstream.pathname='/'+current.pathname.split('/')[1]+'/'+upstream.pathname.split('/').slice(2).join('/');}
+    else if(resource!=='master.m3u8'&&upstream.pathname.split('/')[1]!==item.provider_id){const current=await videoAddress(env,item,now,store,requestProvider);upstream.pathname='/'+current.pathname.split('/')[1]+'/'+upstream.pathname.split('/').slice(2).join('/');}
     manifest=/\.m3u8$/.test(upstream.pathname);
   }
-  const range=thumbnail?null:request.headers.get('range');if(range&&!/^bytes=\d+-\d*$/.test(range))fail('invalid_range',416);
+  const range=thumbnail||manifest?null:request.headers.get('range');if(range&&!/^bytes=\d+-\d*$/.test(range))fail('invalid_range',416);
   if(request.method==='HEAD')return new Response(null,{headers:headers({'Content-Type':manifest?'application/vnd.apple.mpegurl':thumbnail?'image/jpeg':image?item.mime||'image/jpeg':'application/octet-stream','Cache-Control':'no-store'},true)});
-  if(item.kind==='image'||upstream.ishareSeconds>0)await store.delivery(item.owner,item.kind,item.kind==='image'?1:upstream.ishareSeconds,now);
+  if(upstream.ishareSeconds>0)await store.delivery(item.owner,item.kind,upstream.ishareSeconds,now);
   // Internal cache identities omit expiring signatures; upstream content is immutable per media ID.
   const path=item.kind==='video'?upstream.pathname.split('/').slice(2).join('/')+'?'+upstream.searchParams.toString():'blob';
-  const cacheKey=new Request(new URL('/__ishare-cache/'+item.id+'/'+await digest(path),request.url));
-  if(!manifest&&!range&&cache){const hit=await cache.match(cacheKey);if(hit)return new Response(request.method==='HEAD'?null:hit.body,{status:hit.status,headers:hit.headers});}
+  const cacheKey=imageCacheKey||new Request(new URL('/__ishare-cache/'+item.id+'/'+await digest(path),request.url));
+  if(!image&&!manifest&&!range&&cache){const hit=await cache.match(cacheKey);if(hit)return new Response(request.method==='HEAD'?null:hit.body,{status:hit.status,headers:hit.headers});}
   let response;
-  try{response=await requestUpstream(upstream,{method:'GET',headers:{...(item.kind==='image'?{Authorization:'Bearer '+env.MEDIA_API_TOKEN}:{}),...(range?{Range:range}:{})},redirect:'manual',signal:AbortSignal.timeout(20000)});}catch{fail('media_unavailable',503);}
+  try{response=await requestUpstream(upstream,{method:'GET',headers:{...(original?{Authorization:'Bearer '+env.MEDIA_API_TOKEN}:{}),...(item.kind==='image'&&!original?{Accept:format==='avif'?'image/avif,image/webp,image/*':format==='webp'?'image/webp,image/*':'image/jpeg,image/png,image/gif'}:{}),...(range?{Range:range}:{})},redirect:'manual',signal:AbortSignal.timeout(20000)});}catch{fail('media_unavailable',503);}
   if(![200,206].includes(response.status)){await response.body?.cancel();fail([404,410].includes(response.status)?'media_missing':'media_unavailable',[404,410].includes(response.status)?404:502);}
-  const mime=(response.headers.get('content-type')||'').split(';')[0].toLowerCase();
+  const mime=(response.headers.get('content-type')||'').split(';')[0].trim().toLowerCase();
   if(image&&!/^image\/(jpeg|png|webp|avif|gif)$/.test(mime)){await response.body?.cancel();fail('invalid_upstream',502);}
   if(thumbnail){
     if(response.status!==200||mime!=='image/jpeg'){await response.body?.cancel();fail('invalid_upstream',502);}
@@ -81,12 +87,15 @@ export async function deliver(request,env,item,resource,store,context,{requestUp
     if(!size)fail('invalid_upstream',502);const body=new Uint8Array(size);let offset=0;for(const part of parts){body.set(part,offset);offset+=part.byteLength;}
     const result=coverResponse(await store.saveVideoCover(item.id,body,mime));if(cache)context.waitUntil(cache.put(coverKey,result.clone()).catch(()=>{}));return result;
   }
-  if(!image&&!/^(application\/(vnd\.apple\.mpegurl|x-mpegurl|octet-stream)|video\/(mp2t|mp4)|audio\/(mp4|aac|mpeg)|text\/vtt)$/.test(mime)){await response.body?.cancel();fail('invalid_upstream',502);}
-  const resultHeaders=headers({'Content-Type':manifest?'application/vnd.apple.mpegurl':mime,'Cache-Control':manifest?'public, max-age=20':'public, max-age=300','Cross-Origin-Resource-Policy':'cross-origin'},true);
+  if(!image&&!/^(application\/(vnd\.apple\.mpegurl|x-mpegurl|octet-stream)|video\/(mp2t|mp4|iso.segment)|audio\/(mp4|aac|mpeg)|text\/vtt)$/.test(mime)){await response.body?.cancel();fail('invalid_upstream',502);}
+  const resultHeaders=headers({'Content-Type':manifest?'application/vnd.apple.mpegurl':mime,'Cache-Control':manifest||original?'no-store':'public, max-age=300','Cross-Origin-Resource-Policy':'cross-origin'},true);
+  if(item.kind==='image'&&!original)resultHeaders.set('Vary','Accept');
+  if(original)resultHeaders.set('Content-Disposition',"attachment; filename*=UTF-8''"+encodeURIComponent(item.title||'image').replace(/[!'()*]/g,char=>'%'+char.charCodeAt(0).toString(16)));
+  if(!manifest&&/^\d+$/.test(response.headers.get('Content-Length')||''))resultHeaders.set('Content-Length',response.headers.get('Content-Length'));
   if(range){for(const name of ['Content-Range','Accept-Ranges'])if(response.headers.has(name))resultHeaders.set(name,response.headers.get(name));}
   let body=response.body;
   if(manifest){const text=await response.text();body=await rewriteManifest(text,upstream,item.id,await store.key(),now+Math.max(3600,(item.duration||0)+600),env);}
   const result=new Response(body,{status:response.status,headers:resultHeaders});
-  if(!manifest&&!range&&cache)context.waitUntil(cache.put(cacheKey,result.clone()).catch(()=>{}));
+  if(!manifest&&!original&&!range&&cache)context.waitUntil(cache.put(cacheKey,result.clone()).catch(()=>{}));
   return request.method==='HEAD'?new Response(null,{status:result.status,headers:result.headers}):result;
 }

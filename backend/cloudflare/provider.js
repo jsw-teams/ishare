@@ -28,6 +28,11 @@ export function provider(env,request=fetch) {
     return result.result;
   }
   return {
+    imageInfo(item){return call('image',`images/v1/${providerId(item.provider_id)}`);},
+    imageVariants(){return call('image','images/v1/variants');},
+    imageVariant(id,options,exists){return call('image','images/v1/variants'+(exists?'/'+id:''),{method:exists?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...(!exists?{id}:{}),options,neverRequireSignedURLs:false})});},
+    imageKeys(){return call('image','images/v1/keys');},
+    createImageKey(){return call('image','images/v1/keys/ishare',{method:'PUT'});},
     async health(kind){try{const path=kind==='image'?'images/v2?per_page=10':'stream?limit=1';await call(kind,path);return {configured:true,readable:true};}catch(error){return {configured:error.message!=='service_unavailable',readable:false,error:error.message};}},
     async locate(item){
       const query=new URLSearchParams({creator:'ishare:'+item.owner});

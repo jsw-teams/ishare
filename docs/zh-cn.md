@@ -26,7 +26,9 @@
 
 使用 Node 24，执行 `npm ci`、`npm run build`、`npm test`、`npm run deploy`。后端代码位于 `/backend/cloudflare`。Worker 保存配置并通过一个 SQLite Durable Object 保存业务资料；Images 和 Stream 通过 **API Token** 接入，共用一个资源 Cloudflare 账户。没有 Images/Stream 的 Worker binding。
 
-在 Worker 的运行时配置中添加一份 `STREAM_ACCOUNT_ID`（可用普通 Variable 或 Secret），以及共用的 `MEDIA_API_TOKEN` Secret（对实际资源账户授权 Images Edit 和 Stream Edit）。删除旧 `IMAGES_ACCOUNT_ID` 和 `STREAM_CUSTOMER_CODE`，不再兼容读取旧名称；播放器地址由 Stream API 获取。图片代理使用需要 Bearer Token 的原图下载接口，不要求创建专用变体。视频在服务端缓存 API 取得的签名播放地址和令牌，无需手填签名密钥。
+在 Worker 的运行时配置中添加一份 `STREAM_ACCOUNT_ID`（可用普通 Variable 或 Secret），以及共用的 `MEDIA_API_TOKEN` Secret（对实际资源账户授权 Images Edit 和 Stream Edit）。删除旧 `IMAGES_ACCOUNT_ID` 和 `STREAM_CUSTOMER_CODE`，不再兼容读取旧名称；播放器地址由 Stream API 获取。后端自动配置 640、1280、2048 像素范围的私有签名图片变体，按显示尺寸和浏览器格式能力代理加载。点击图片打开查看器或保存时才请求原图。视频在服务端缓存 API 取得的签名播放地址和令牌，无需手填签名密钥。
+
+视频播放器与图片查看器使用独立开源的 [media-viewer 组件](https://github.com/jsw-teams/media-viewer)。手机播放器的进度条和操作栏分行显示。图片点击后全屏展开，可缩放、拖动、保存，通过叉号或 Escape 关闭后返回原位置。视频点击播放后才加载分片，暂停后停止后续分片请求。
 
 GitHub 登录需要 `GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`，回调地址为 `https://ishare.js.gripe/auth/callback`。其他服务的 GitHub App 回调不应被自动修改。业务域名从请求自动取得，无需额外域名变量；静态页面网址在 `config.yml` 配置，路由由你自行配置；`workers.dev` 与预览域名关闭。托管 Images/Stream 需要相应的平台计划，一键部署不会提供免费的媒体额度或自动继承其他 Worker 的 Secrets。
 

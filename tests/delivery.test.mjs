@@ -29,11 +29,11 @@ test('SSRF, namespace escapes, redirects and unsafe manifest syntax fail closed'
   const secret=random();for(const source of ['#EXTM3U\nhttps://evil.example/a.ts','#EXTM3U\n#EXT-X-KEY:URI="https://169.254.169.254/secret"','#EXTM3U\n../../other/a.ts','#EXTM3U\n#EXT-X-DEFINE:NAME="token",VALUE="x"'])await assert.rejects(rewriteManifest(source,base,item.id,secret,100,env));
   assert.throws(()=>upstreamUrl('https://customer-testcustomer.cloudflarestream.com.evil.example/a',base,env));
   const image={id:item.id,kind:'image',provider_id:item.provider_id};
-  await assert.rejects(deliver(new Request('https://ishare.js.gripe/i/'+item.id+'/public'),env,image,'public',{delivery:()=>{}}, {waitUntil:()=>{}},{cache:null,requestUpstream:async()=>new Response(null,{status:302,headers:{Location:'https://origin.example/secret'}})}),/media_unavailable/);
+  await assert.rejects(deliver(new Request('https://ishare.js.gripe/i/'+item.id+'/original'),env,image,'original',{delivery:()=>{}}, {waitUntil:()=>{}},{cache:null,requestUpstream:async()=>new Response(null,{status:302,headers:{Location:'https://origin.example/secret'}})}),/media_unavailable/);
 });
 test('image delivery returns bytes without leaking provider headers or redirects',async()=>{
   const image={id:item.id,kind:'image',provider_id:item.provider_id};
-  const response=await deliver(new Request('https://ishare.js.gripe/i/'+item.id+'/public'),env,image,'public',{delivery:()=>{}}, {waitUntil:()=>{}},{cache:null,requestUpstream:async(url,options)=>{assert.equal(url.hostname,'api.cloudflare.com');assert.ok(url.pathname.endsWith('/blob'));assert.equal(options.headers.Authorization,'Bearer '+env.MEDIA_API_TOKEN);assert.equal(options.redirect,'manual');assert.equal(url.search,'');return new Response(new Uint8Array([1,2,3]),{headers:{'Content-Type':'image/png',Location:'https://origin.example','Content-Location':'https://origin.example','Link':'<https://origin.example>'}});}});
+  const response=await deliver(new Request('https://ishare.js.gripe/i/'+item.id+'/original'),env,image,'original',{delivery:()=>{}}, {waitUntil:()=>{}},{cache:null,requestUpstream:async(url,options)=>{assert.equal(url.hostname,'api.cloudflare.com');assert.ok(url.pathname.endsWith('/blob'));assert.equal(options.headers.Authorization,'Bearer '+env.MEDIA_API_TOKEN);assert.equal(options.redirect,'manual');assert.equal(url.search,'');return new Response(new Uint8Array([1,2,3]),{headers:{'Content-Type':'image/png',Location:'https://origin.example','Content-Location':'https://origin.example','Link':'<https://origin.example>'}});}});
   assert.equal(response.status,200);for(const name of ['Location','Content-Location','Link'])assert.equal(response.headers.get(name),null);assert.deepEqual([...new Uint8Array(await response.arrayBuffer())],[1,2,3]);
 });
 
@@ -45,4 +45,15 @@ test('long video segments renew private upstream tokens without changing public 
     for(let i=0;i<2;i++){const response=await deliver(new Request('https://ishare.js.gripe/v/'+item.id+'/'+ticket),settings,video,ticket,store,{waitUntil:()=>{}},options);assert.equal(response.status,200);await response.text();}
     assert.equal(minted,1);assert.equal(deliveries,2);assert.equal(store.account('42',{},'99',now).usage.videoDeliverySeconds,8);
   }finally{database.close();}
+});
+
+
+test('Stream independently signed fMP4 segments keep their video namespace and signatures behind opaque tickets',async()=>{
+ const {store,database}=repository(),settings=environment(store),clock=now(),video={...item,owner:'42',duration:30};
+ try{const playlist='#EXTM3U\n#EXT-X-MAP:URI="/'+item.provider_id+'/video/init.mp4?p=fixture&s=signature"\n#EXTINF:4,\n/'+item.provider_id+'/video/segment.mp4?p=fixture&s=signature\n#EXT-X-ENDLIST',rewritten=await rewriteManifest(playlist,base,item.id,await store.key(),clock+3600,settings);
+ assert.doesNotMatch(rewritten,/provider-id|fixture|signature|cloudflarestream/);const tickets=[...rewritten.matchAll(/\/v\/[a-f0-9]{32}\/([A-Za-z0-9_-]+)/g)].map(match=>match[1]);assert.equal(tickets.length,2);
+ for(const ticket of tickets){const response=await deliver(new Request('https://ishare.js.gripe/v/'+item.id+'/'+ticket,{headers:{Range:'bytes=0-'}}),settings,video,ticket,store,{waitUntil(){}},{cache:null,requestProvider(){throw Error('Signed segments must not replace their namespace with a playback JWT');},requestUpstream:async url=>{assert.ok(url.pathname.startsWith('/'+item.provider_id+'/'));assert.equal(url.searchParams.get('p'),'fixture');assert.equal(url.searchParams.get('s'),'signature');return new Response('fragment',{headers:{'Content-Type':'video/iso.segment','Content-Length':'8'}});}});assert.equal(response.status,200);assert.equal(await response.text(),'fragment');}
+ await assert.rejects(rewriteManifest('#EXTM3U\n/other-video/video/segment.mp4?p=fixture&s=signature',base,item.id,await store.key(),clock+3600,settings),/invalid_manifest/);
+ const response=await deliver(new Request('https://ishare.js.gripe/v/'+item.id+'/master.m3u8',{headers:{Range:'bytes=0-15'}}),settings,video,'master.m3u8',store,{waitUntil(){}},{cache:null,requestProvider:async(_url,options)=>Response.json({success:true,result:options.method==='POST'?{token}:{requireSignedURLs:true,playback:{hls:'https://customer-testcustomer.cloudflarestream.com/'+item.provider_id+'/manifest/video.m3u8'}}}),requestUpstream:async(_url,options)=>{assert.equal(options.headers.Range,undefined);return new Response(playlist,{headers:{'Content-Type':'application/vnd.apple.mpegurl'}});}});assert.equal(response.status,200);assert.equal(response.headers.get('Cache-Control'),'no-store');
+ }finally{database.close();}
 });
