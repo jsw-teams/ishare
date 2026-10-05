@@ -10,14 +10,17 @@
     "test": "node --test tests/*.test.mjs",
     "dev": "npm run build && wrangler dev",
     "deploy": "npm run build && wrangler deploy",
-    "deploy:cloudflare": "npm run deploy"
+    "deploy:cloudflare": "npm run deploy",
+    "icons:sync": "node tools/sync-icons.mjs"
   },
   "dependencies": {
-    "@jsw-teams/media-viewer": "https://codeload.github.com/jsw-teams/media-viewer/tar.gz/5a27e804fcd40ca0618f5fe958e37a323b28969a",
-    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/707682b080209379cf4cc0a1303f202fc9d80a8f"
+    "@jsw-teams/media-viewer": "https://codeload.github.com/jsw-teams/media-viewer/tar.gz/42fde6316fd09d18b4fd0530a6a58808562c5966",
+    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/0e432201b55fa8a5df2fbf90dc571aa795045f96"
   },
   "devDependencies": {
+    "axe-core": "^4.13.0",
     "esbuild": "^0.28.2",
+    "lucide-static": "1.52.0",
     "playwright": "^1.63.0",
     "wrangler": "^4.145.0"
   },
