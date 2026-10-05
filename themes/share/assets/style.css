@@ -45,7 +45,7 @@ dialog.upload-status{width:min(540px,calc(100vw - 32px));max-height:85vh;overflo
 @media(min-width:850px){.viewer .shared-post{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,.8fr);gap:0 1.5rem}.viewer .media-gallery{grid-row:span 2}.viewer .shared-post>.caption{align-self:start;max-height:60vh;overflow:auto;margin:0;padding:0}.viewer .attribution{align-self:end;padding:1rem 0}.embedded .shared-post{display:block}}
 #profile-posts .post-card{display:flex;flex-direction:column}#profile-posts .post-author{order:-2;margin:0 0 .8rem}#profile-posts .post-caption{order:-1;margin:0 0 1rem}
 
-.mine-heading #status{min-block-size:3.5rem;box-sizing:border-box}.mine-heading #status:empty{padding:.85rem 1rem;border:1px solid transparent}.topbar .actions{min-width:0;grid-column:3;grid-row:1}.topbar .actions select{min-height:44px;max-width:120px}.gallery-stage>figure{height:100%;margin:0}.gallery-stage figure>.media-feedback{height:100%;min-height:0}
+.mine-heading #status{min-block-size:calc(2lh + 1.7rem + 2px);box-sizing:border-box}.mine-heading #status:empty{padding:.85rem 1rem;border:1px solid transparent}.topbar .actions{min-width:0;grid-column:3;grid-row:1}.topbar .actions select{min-height:44px;max-width:120px}.gallery-stage>figure{height:100%;margin:0}.gallery-stage figure>.media-feedback{height:100%;min-height:0}
 @media(max-width:850px){.topbar .actions{grid-column:2;grid-row:1}}
 @media(max-width:540px){.topbar{column-gap:.4rem}.topbar .actions{gap:.3rem}.topbar .actions select{max-width:104px;font-size:.8rem}.publisher-gate:has(#publisher-login){display:block;padding:1rem}.publisher-gate .gate-icon{margin-bottom:.75rem}.publisher-gate #publisher-login{width:100%;white-space:nowrap}.publisher-gate>div{min-width:0}}
 
