@@ -1,8 +1,8 @@
 site:
   title: ishare
-  description: 分享图片、视频与配文。
+  description: Share images, videos and the stories behind them.
   url: https://ishare.js.gripe
-  language: zh-CN
+  language: en
   head:
     titleSuffix: ishare
     titleSeparator: " - "

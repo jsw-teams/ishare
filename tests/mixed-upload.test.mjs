@@ -47,7 +47,7 @@ for(const scenario of [{name:'image then video',order:['image','video']},{name:'
    return route.fulfill({contentType:types[extname(path)]||'text/html',body:await readFile('dist/'+path)});
   });
   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));page.on('console',message=>{if(message.type()==='warning')logs.push(message.text());});
-  await page.goto('https://ishare.js.gripe/mine/');await page.waitForFunction(()=>!document.querySelector('#publish-form fieldset').disabled);
+  await page.goto('https://ishare.js.gripe/zh-CN/mine/');await page.waitForFunction(()=>!document.querySelector('#publish-form fieldset').disabled);
   await page.locator('[name=caption]').fill('一条帖子里的图片和视频');await page.locator('[name=file]').setInputFiles(scenario.order.map(kind=>kind==='image'?{name:'photo.png',mimeType:'image/png',buffer:image}:{name:'clip.webm',mimeType:'video/webm',buffer:video}));
   await page.waitForFunction(()=>document.querySelector('.video-preview-placeholder')?.textContent.includes('上传后'));assert.equal(await page.locator('.attachment-tile img').count(),1);assert.match(await page.locator('.attachment-tile').first().textContent(),/clip.webm/);
   await page.locator('#publish-form button[type=submit]').click();await page.waitForFunction(()=>['success','error'].includes(document.querySelector('#upload-status').dataset.state)&&!document.querySelector('#publish-form fieldset').disabled);

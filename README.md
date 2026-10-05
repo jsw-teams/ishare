@@ -1,5 +1,7 @@
 # ishare
 
+English is the default language at the site root. Traditional and Simplified Chinese remain available at /zh-TW/ and /zh-CN/.
+
 Write a story first, then add multiple image or video attachments. Publish complete attributed oEmbed posts or individual Markdown image links. The homepage lists only posts explicitly opted in by their publishers; My shares contains the composer, graphical quota usage and personal history. Post avatars link to public author profiles with introductions and published posts. Publishers sign in with GitHub; viewers need no account. Media is public and shareable.
 
 [中文说明](docs/zh-cn.md) / [本站配置说明](docs/configuration.md) / [Quota and privacy operations](docs/operations.md)

@@ -40,7 +40,7 @@ export async function renderPage(item,env,site,embedded=false,preferred='en') {
 }
 
 function localeFor(preferred){const first=(preferred||'en').split(',')[0];return /^zh-(TW|HK|Hant)/i.test(first)?'zh-TW':/^zh/i.test(first)?'zh-CN':'en';}
-export async function renderProfile(profile,env,site,preferred='zh-CN'){
+export async function renderProfile(profile,env,site,preferred='en'){
  const locale=localeFor(preferred);
  const shell=await env.ASSETS.fetch(new Request(site+'/profile-shell-'+locale+'.html'));if(!shell.ok)fail('assets_unavailable',503);
  const values={PROFILE_NAME_TOKEN:profile.displayName,PROFILE_BIO_TOKEN:profile.bio,PROFILE_ID_TOKEN:profile.id};

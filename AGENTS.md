@@ -20,6 +20,7 @@
 - Operator build root is /ishare.js.gripe in jsw-teams/web. This site enables no general media-platform consent services. Other web/EdgePress sites preset only X and YouTube; do not restore broad platform lists.
 
 - Official names are ishare in English and 爱分享/愛分享 in Chinese. Keep names separate by locale. Homepage is an opt-in public post feed; My shares holds the text-first composer, multiple attachments and owned history. Never auto-enroll legacy content in the feed.
+- English is the default locale at the site root; Traditional and Simplified Chinese use /zh-TW/ and /zh-CN/. Keep config.yml, edgepress.config.mjs, language dictionaries, localized links and source mirror synchronized when changing locale defaults.
 - Quotas are managed online by the verified GitHub operator and persisted in SQLite, not MAX_/QUOTA_ variables. Default changes preserve existing user policies; ordinary shared reductions receive notice. No extra video-byte quota beyond provider limits.
 - STREAM_ACCOUNT_ID is shared by Images/Stream. Remove obsolete IMAGES_ACCOUNT_ID and STREAM_CUSTOMER_CODE configuration; do not restore aliases. Discover signed playback addresses using the authenticated API.
 
