@@ -4,6 +4,8 @@ English is the default language at the site root. Traditional and Simplified Chi
 
 Write a story first, then add multiple image or video attachments. Publish complete attributed oEmbed posts or individual Markdown image links. The homepage lists only posts explicitly opted in by their publishers; My shares contains the composer, graphical quota usage and personal history. Post avatars link to public author profiles with introductions and published posts. Publishers sign in with GitHub; viewers need no account. Media is public and shareable.
 
+When embedded in an EdgePress article, the gallery inherits the host's colors and reports its natural height, keeping attachment controls and the full caption visible. The host loads visible posts after service consent; unrelated message senders cannot change the frame's palette or layout.
+
 [中文说明](docs/zh-cn.md) / [本站配置说明](docs/configuration.md) / [Quota and privacy operations](docs/operations.md)
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/jsw-teams/ishare)
