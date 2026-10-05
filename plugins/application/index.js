@@ -17,6 +17,7 @@ export default function application(api){
     html=translate(html,page.locale).replace(/ISHARE_ICON_([A-Z]+)/g,(_match,key)=>icons[key.toLowerCase()]);
     const brand=messages(page.locale).brand;
     html=html.replaceAll('<span>ishare</span>','<span>'+brand+'</span>').replaceAll('aria-label="ishare"','aria-label="'+brand+'"').replaceAll('content="ishare"','content="'+brand+'"').replaceAll(' - ishare</title>',' - '+brand+'</title>');
+    if(page.urlPath===localizedUrl(config,page.locale,''))html=html.replace(/<title>[^<]*<\/title>/,'<title>'+escape(brand)+'</title>');
     for(const path of ['mine/','guide/','admin/','profile/','appeal/'])html=html.replaceAll('href="/'+path+'"','href="'+localizedUrl(config,page.locale,path)+'"');
     html=html.replaceAll('class="brand" href="/"','class="brand" href="'+localizedUrl(config,page.locale,'')+'"');
     if(html.includes('id="publish-form"'))return html.replace('</body>','<script type="module" src="/ishare/app.js"></script></body>');

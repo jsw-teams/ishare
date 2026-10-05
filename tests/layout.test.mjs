@@ -24,15 +24,16 @@ test('home and native Pages load local art and icons across locales, mobile size
     const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));
     for(const scheme of ['light','dark'])for(const width of [360,390,768,1280]){
       await page.emulateMedia({colorScheme:scheme});await page.setViewportSize({width,height:900});
-      for(const path of ['/','/mine/','/zh-CN/guide/','/zh-TW/privacy/','/admin/','/profile/','/zh-CN/profile/','/zh-TW/profile/']){
+      for(const path of ['/','/zh-CN/','/zh-TW/','/mine/','/zh-CN/guide/','/zh-TW/privacy/','/admin/','/profile/','/zh-CN/profile/','/zh-TW/profile/']){
         const before=apiCalls.length;await page.goto('https://ishare.js.gripe'+path);await page.waitForLoadState('networkidle');
         assert.equal(await page.locator('html').getAttribute('lang'),path.startsWith('/zh-TW/')?'zh-TW':path.startsWith('/zh-CN/')?'zh-CN':'en');assert.equal(await page.locator('main').count(),1);assert.equal(await page.locator('h1').count(),1);
+        if(['/','/zh-CN/','/zh-TW/'].includes(path))assert.equal(await page.title(),path==='/zh-CN/'?'爱分享':path==='/zh-TW/'?'愛分享':'ishare');
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,path+' width '+width);
         await page.locator('img').evaluateAll(nodes=>Promise.all(nodes.map(async node=>{node.loading='eager';await node.decode().catch(()=>{});}))); 
         assert.deepEqual(await page.locator('img').evaluateAll(nodes=>nodes.filter(node=>!node.complete||node.naturalWidth===0).map(node=>node.src)),[],path+' images must decode');
         const privacy=JSON.parse(await page.locator('#edgepress-privacy-config').textContent());assert.deepEqual(privacy.privacy.integrations,[]);
         assert.equal(await page.locator('.privacy-panel').isVisible(),false,'No consent prompt for zero optional services');
-        if(!['/','/mine/','/admin/','/profile/','/zh-CN/profile/','/zh-TW/profile/'].includes(path))assert.equal(apiCalls.length,before,'Guide/privacy pages do not call business APIs');
+        if(!['/','/zh-CN/','/zh-TW/','/mine/','/admin/','/profile/','/zh-CN/profile/','/zh-TW/profile/'].includes(path))assert.equal(apiCalls.length,before,'Guide/privacy pages do not call business APIs');
         if(process.env.ISHARE_CAPTURE_DESIGN==='1'&&scheme==='light'&&[390,1280].includes(width)&&path==='/'){
           await mkdir('docs/images',{recursive:true});await page.screenshot({path:'docs/images/home-'+(width===1280?'desktop':'mobile')+'.png'});
         }
