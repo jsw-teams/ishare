@@ -17,9 +17,8 @@ blocks:
     cells:
       - - type: media-text
           mediaType: image
-          src: /brand/ishare-workflow-en.241b4f653f209572.webp
-          animationSrc: /brand/ishare-workflow-en.241b4f653f209572.gif
-          animationDuration: 33531
+          src: /brand/ishare-workflow-en.28126c06fde24ccb.webp
+          animationSrc: /brand/ishare-workflow-en.5676336d0f99c2a0.mp4
           alt: From story to published post
           title: From story to published post
           text: Write, attach photos and video, then follow the upload and preparation stages. The result offers View post, Share post and My profile.
@@ -27,9 +26,8 @@ blocks:
     cells:
       - - type: media-text
           mediaType: image
-          src: /brand/ishare-sharing-en.b1cd8e9e6a35e29b.webp
-          animationSrc: /brand/ishare-sharing-en.b1cd8e9e6a35e29b.gif
-          animationDuration: 17746
+          src: /brand/ishare-sharing-en.3e27048864b028fb.webp
+          animationSrc: /brand/ishare-sharing-en.840d1a618e8d5441.mp4
           alt: Share it your way
           title: Share it your way
           text: Open Share post to copy a link, full-post embed code or individual Markdown media links.

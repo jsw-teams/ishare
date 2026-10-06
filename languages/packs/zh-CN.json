@@ -78,8 +78,10 @@
   "embedLoading": "正在加载 {service} 媒体…",
   "embedLoaded": "已加载 {service} 媒体。",
   "embedDisabled": "本站已关闭 {service} 服务，此媒体未加载。",
-  "demoPlay": "观看操作演示",
+  "demoPlay": "播放演示",
   "demoPause": "暂停演示",
-  "demoReplay": "从头重播",
-  "demoError": "演示暂时无法加载，请重试。"
+  "demoReplay": "重新播放",
+  "demoError": "演示暂时无法加载，请重试。",
+  "demoResume": "继续播放",
+  "demoLoading": "正在加载演示…"
 }

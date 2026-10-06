@@ -78,8 +78,10 @@
   "embedLoading": "Loading media from {service}…",
   "embedLoaded": "Media from {service} is loaded.",
   "embedDisabled": "The site has disabled {service}. This media has not been loaded.",
-  "demoPlay": "Watch the walkthrough",
-  "demoPause": "Pause the walkthrough",
-  "demoReplay": "Replay from the start",
-  "demoError": "The walkthrough could not load. Please try again."
+  "demoPlay": "Play demo",
+  "demoPause": "Pause demo",
+  "demoReplay": "Replay demo",
+  "demoError": "The walkthrough could not load. Please try again.",
+  "demoResume": "Continue demo",
+  "demoLoading": "Loading demo…"
 }

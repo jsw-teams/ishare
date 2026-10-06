@@ -21,4 +21,6 @@ Use case: logo-brand. Asset type: ishare website icon and mascot, square composi
 Use case: illustration-story. Asset type: wide website hero banner for ishare, image and video sharing. Input image is a reference for the EXACT mascot identity: same friendly charcoal black bear, rounded ears, ivory muzzle and crescent chest patch, small gentle expression. Create a polished wide editorial illustration: this black bear on the RIGHT half, sharing a small photograph card, surrounded by only three simple floating paper photo/video frames with stylized green mountains, a warm little sun, and one clean play triangle. Cream-paper backdrop, restrained sage and forest green shapes, charcoal bear, warm apricot accent, subtle soft texture, beautifully balanced quiet modern web illustration. LEFT half should be mostly clear warm cream negative space for actual HTML headline to overlay; bear and meaningful scene confined right-of-center with ample crop-safe margin at top bottom right. Panoramic landscape composition about 2.5:1. No words, logos, UI screenshot, watermark, extra characters, crowded decorative shapes. Bear illustration must feel consistent with reference.
 ```
 
-新增英文与简繁中文字符标识使用手写 SVG，与既有黑熊形象一致；未调用图片生成工具。文件包含内容哈希，用于导航、页脚与帖子的品牌入口。
+英文与简繁中文字符标识使用内置 imagegen 生成，沿用黑熊吉祥物。透明 PNG 原图保存在 `content/assets/brand/sources/wordmark-imagegen.png`；三种语言仅进行裁剪、留白和尺寸优化，输出带内容哈希的透明 WebP，用于导航、页脚与帖子品牌入口。
+
+生成提示：以既有黑熊头像为形象参考，在透明画布上生成三行横向品牌图，文字分别为 `ishare`、`爱分享`、`愛分享`，深青绿色圆润字形配浅色描边，三行保持同一黑熊形象。无额外标语、水印或背景。

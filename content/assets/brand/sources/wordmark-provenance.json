@@ -1,0 +1,13 @@
+{
+  "generator": "Built-in imagegen",
+  "date": "2026-10-06",
+  "reference": "/brand/bear-icon.3754101e8d6380da.png",
+  "master": "wordmark-imagegen.png",
+  "transforms": "Crop each language row; transparent padding; resize; WebP quality 90",
+  "wordmarks": {
+    "en": "/brand/wordmark-en.ae1755f42d13a86f.webp",
+    "zh-CN": "/brand/wordmark-zh-CN.929988fa0561f102.webp",
+    "zh-TW": "/brand/wordmark-zh-TW.36d09992f5e9e0ee.webp"
+  },
+  "prompt": "Create a polished raster brand sheet with the supplied black-bear mascot as the identity reference. Three separate horizontal lockups on a genuinely transparent canvas: exact lowercase ishare, exact Simplified Chinese 爱分享, exact Traditional Chinese 愛分享. Keep the same rounded ears, black soft fur, tan muzzle, warm expression and tiny photo in all rows. A softly dimensional bear sits beside rounded bold deep-teal lettering with a subtle warm pale outline for both light and dark themes. Leave transparent gutters for cropping. No extra slogans, punctuation, watermark, background or painted checkerboard."
+}

@@ -10,6 +10,8 @@ When embedded in an EdgePress article, the gallery inherits the host's colors an
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/jsw-teams/ishare)
 
+The black-bear wordmarks are generated raster artwork with transparent backgrounds; each language has its own image. Guide recordings play when visible and keep their position when paused or offscreen. Website playback uses progressive MP4s; these documentation exports remain GIFs.
+
 ![ishare homepage illustration with its black bear mascot](content/assets/brand/bear-banner.ed22b23efa24f8a8.webp)
 
 ![From writing a story to publishing one mixed-media post](docs/images/publishing-en.gif)

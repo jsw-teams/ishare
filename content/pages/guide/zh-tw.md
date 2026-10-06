@@ -17,9 +17,8 @@ blocks:
     cells:
       - - type: media-text
           mediaType: image
-          src: /brand/ishare-workflow-zh.ebed75cc5368ac89.webp
-          animationSrc: /brand/ishare-workflow-zh.ebed75cc5368ac89.gif
-          animationDuration: 29594
+          src: /brand/ishare-workflow-zh.56fb3ed1cc7642da.webp
+          animationSrc: /brand/ishare-workflow-zh.5ffb196d31530b26.mp4
           alt: 從故事到發表成功
           title: 從故事到發表成功
           text: 先寫文字，再添圖片與影片。進度視窗顯示上傳與處理狀態，成功後可查看貼文、分享或進入個人主頁。
@@ -27,9 +26,8 @@ blocks:
     cells:
       - - type: media-text
           mediaType: image
-          src: /brand/ishare-sharing-zh.d07f438c74218bef.webp
-          animationSrc: /brand/ishare-sharing-zh.d07f438c74218bef.gif
-          animationDuration: 17876
+          src: /brand/ishare-sharing-zh.e0f3cde78734233f.webp
+          animationSrc: /brand/ishare-sharing-zh.95ad5a196328433e.mp4
           alt: 按自己的方式分享
           title: 按自己的方式分享
           text: 點開「分享帖子」，複製連結、完整貼文嵌入程式碼，或各個附件的 Markdown 連結。

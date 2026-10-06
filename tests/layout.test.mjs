@@ -17,7 +17,7 @@ test('home and native Pages load local art and icons across locales, mobile size
         return route.fulfill({contentType:'application/json',body:JSON.stringify({user:null,csrf:null,loginAvailable:true,canPublish:false,isAdmin:false,account:null,imagesAvailable:true,videosAvailable:true,maxVideoDuration:600,maxVideoBytes:29999999999})});
       }
       const path=url.pathname.endsWith('/')?url.pathname.slice(1)+'index.html':url.pathname.slice(1);
-      const types={'.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.webp':'image/webp','.png':'image/png','.json':'application/json'};
+      const types={'.mp4':'video/mp4','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.webp':'image/webp','.png':'image/png','.json':'application/json'};
       try{return route.fulfill({contentType:types[extname(path)]||'text/html',body:await readFile('dist/'+path)});}
       catch{errors.push('Missing local resource: '+path);return route.fulfill({status:404,body:''});}
     });
