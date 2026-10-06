@@ -1,3 +1,6 @@
+import {messages} from '../../static/ishare/i18n.js';
+import {wordmarks} from '../../static/ishare/branding.js';
+import {icons} from '../../static/ishare/icons.js';
 import { escape, https, headers, fail } from './security.js';
 
 export function publicRecord(item,site) {
@@ -19,20 +22,24 @@ export function shareId(address,site) {
   return url.pathname.slice(3);
 }
 export async function renderPage(item,env,site,embedded=false,preferred='en') {
-  const locale=localeFor(preferred),record=publicRecord(item,site),assetResponse=await env.ASSETS.fetch(new Request(site+'/assets.json'));
+  const locale=localeFor(preferred),t=messages(locale),record=publicRecord(item,site),assetResponse=await env.ASSETS.fetch(new Request(site+'/assets.json'));
   if(!assetResponse.ok)fail('assets_unavailable',503);const assets=await assetResponse.json();
   const attachments=item.kind==='post'?record.media:[record],firstImage=attachments.find(child=>child.kind==='image');
   const figures=attachments.map(child=>`<figure class="post-attachment">${child.kind==='image'?`<img data-media data-original="${site}/i/${child.id}/original" src="${site}/i/${child.id}/thumbnail" data-preview-srcset="${site}/i/${child.id}/thumbnail 640w, ${site}/i/${child.id}/medium 1280w, ${child.mediaUrl} 2048w" sizes="(max-width: 720px) 100vw, 720px" loading="lazy" alt="${escape(child.title)}" decoding="auto">`:`<video playsinline preload="none" poster="${site}/v/${child.id}/thumbnail" data-duration="${Number(child.duration)||0}" data-source="${child.mediaUrl}" aria-label="${escape(child.title)}"></video>`}</figure>`);
-  const media=figures.length?`<div class="media-gallery" data-gallery><div class="gallery-stage" tabindex="0" aria-label="Media">${figures[0]}</div>${figures.map(figure=>`<template>${figure}</template>`).join('')}<div class="gallery-navigation" ${figures.length<2?'hidden':''}><button type="button" data-previous aria-label="Previous attachment">‹</button><span class="gallery-count" role="status" aria-live="polite">1 / ${figures.length}</span><button type="button" data-next aria-label="Next attachment">›</button></div></div>`:'';
-  const attribution=`<footer class="attribution"><a href="${record.author.url}" target="_blank" rel="noopener noreferrer" class="author-link"><img width="32" height="32" alt="" src="/brand/bear-favicon.52039e84b2f38015.png" data-author-avatar="${record.author.id}">${escape(record.author.name||record.author.login)}</a>${record.source.url?`<span> / </span><a href="${escape(record.source.url)}" target="_blank" rel="noopener noreferrer">${escape(record.source.name||'Source')}</a>`:''}<a href="${record.shareUrl}" target="_blank" rel="noopener noreferrer">ishare</a></footer>`;
+  const media=figures.length?`<div class="media-gallery" data-gallery><div class="gallery-stage" tabindex="0" aria-label="${escape(t.mediaLabel)}">${figures[0]}</div>${figures.map(figure=>`<template>${figure}</template>`).join('')}<div class="gallery-navigation" ${figures.length<2?'hidden':''}><button type="button" data-previous aria-label="${escape(t.previousAttachment)}">‹</button><span class="gallery-count" role="status" aria-live="polite">1 / ${figures.length}</span><button type="button" data-next aria-label="${escape(t.nextAttachment)}">›</button></div></div>`:'';
+  const attribution=`<footer class="attribution"><a href="${record.author.url}" target="_blank" rel="noopener noreferrer" class="author-link"><img width="32" height="32" alt="" src="/brand/bear-favicon.52039e84b2f38015.png" data-author-avatar="${record.author.id}">${escape(record.author.name||record.author.login)}</a><div class="post-actions"><button type="button" class="share-post-button" data-share-post="post-share-data">${icons.share}<span>${escape(t.sharePost)}</span></button><a class="post-brand" href="${site}" target="_blank" rel="noopener noreferrer"><img src="${wordmarks[locale]}" alt="${escape(t.brand)}" width="131" height="32"></a></div></footer>`;
+  const sharing=`<script type="application/json" id="post-share-data">${JSON.stringify({shareUrl:record.shareUrl,embedCode:record.embedCode,markdown:record.markdown}).replaceAll('<','\\u003c')}</script>`;
+
   const discovery=`<link rel="alternate" type="application/json+oembed" href="${site}/oembed?url=${encodeURIComponent(record.shareUrl)}">`;
   const shell=await env.ASSETS.fetch(new Request(site+assets.shells[locale]));if(!shell.ok)fail('assets_unavailable',503);
-  const content=`${!embedded?'<h1 class="visually-hidden">ishare</h1>':''}<article class="shared-post">${media}${item.caption?`<p class="caption">${escape(item.caption)}</p>`:''}${attribution}</article>${!embedded?`<section class="share-tools" aria-label="Share"><label>Share URL<input readonly value="${record.shareUrl}"></label><label>Embed code<textarea readonly rows="3">${escape(oembed(item,site).html)}</textarea></label>${record.markdown?`<label>Markdown<textarea readonly rows="6">${escape(record.markdown)}</textarea></label>`:''}</section>`:''}`;
+  const content=`${!embedded?'<h1 class="visually-hidden">'+escape(t.brand)+'</h1>':''}<article class="shared-post">${media}${item.caption?`<p class="caption">${escape(item.caption)}</p>`:''}${attribution}</article>`;
+
   const source=(await shell.text()).replace(firstImage?/<meta property="og:image"[^>]*>/g:/$^/g,'');
   let body=source.replaceAll('ISHARE_TITLE_TOKEN',escape(item.kind==='post'?postLabel(item):item.title)).replace(/https:\/\/[^"<>]+\/share-shell-[a-zA-Z-]+\.html/g,record.shareUrl).replace('ISHARE_BODY_TOKEN',content).replace('id="main"','id="main" class="viewer"').replace('</head>',`${attachments.length?`<link rel="stylesheet" href="${assets.playerStyle}">`:''}${discovery}<meta property="og:title" content="${escape(item.kind==='post'?postLabel(item):item.title)}"><meta property="og:type" content="${item.kind==='video'?'video.other':'article'}"><meta property="og:url" content="${record.shareUrl}">${firstImage?`<meta property="og:image" content="${site}/i/${firstImage.id}/thumbnail">`:''}</head>`);
   if(attachments[0]?.kind==='video')body=body.replace('</head>',`<link rel="preload" as="image" href="${site}/v/${attachments[0].id}/thumbnail"></head>`);
   body=body.replace(/<select id="site-language"[\s\S]*?<\/select>/,'');
   if(embedded)body=body.replace(/<html lang="([^"]+)">/,'<html lang="$1" class="embedded">').replace(/<header\b[\s\S]*?<\/header>/,'').replace(/<footer class="site-footer"[\s\S]*?<\/footer>/,'').replace(/<script\b[^>]*>[\s\S]*?<\/script>/g,'');
+  body=body.replace('</body>',sharing+(assets.share?`<script type="module" src="${assets.share}"></script>`:'')+'</body>');
   if(assets.avatars)body=body.replace('</body>',`<script type="module" src="${assets.avatars}"></script></body>`);
   if(attachments.length)body=body.replace('</body>',`<script type="module" src="${assets.media}"></script></body>`);
 

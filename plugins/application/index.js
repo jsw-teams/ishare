@@ -1,3 +1,4 @@
+import {wordmarks} from '../../static/ishare/branding.js';
 import {icons} from '../../static/ishare/icons.js';
 import {readFile} from 'node:fs/promises';
 import {messages} from '../../static/ishare/i18n.js';
@@ -14,9 +15,9 @@ export default function application(api){
     return html;
   });
   api.registerFilter('html:afterLayout',(html,{page,config})=>{
-    html=translate(html,page.locale).replace(/ISHARE_ICON_([A-Z]+)/g,(_match,key)=>icons[key.toLowerCase()]);
+    html=translate(html,page.locale).replaceAll(wordmarks.en,wordmarks[page.locale]).replaceAll('alt="ishare"','alt="'+messages(page.locale).brand+'"').replace(/ISHARE_ICON_([A-Z]+)/g,(_match,key)=>icons[key.toLowerCase()]);
     const brand=messages(page.locale).brand;
-    html=html.replaceAll('<span>ishare</span>','<span>'+brand+'</span>').replaceAll('aria-label="ishare"','aria-label="'+brand+'"').replaceAll('content="ishare"','content="'+brand+'"').replaceAll(' - ishare</title>',' - '+brand+'</title>');
+    html=html.replaceAll('aria-label="ishare"','aria-label="'+brand+'"').replaceAll('content="ishare"','content="'+brand+'"').replaceAll(' - ishare</title>',' - '+brand+'</title>');
     if(page.urlPath===localizedUrl(config,page.locale,''))html=html.replace(/<title>[^<]*<\/title>/,'<title>'+escape(brand)+'</title>');
     for(const path of ['mine/','guide/','admin/','profile/','appeal/'])html=html.replaceAll('href="/'+path+'"','href="'+localizedUrl(config,page.locale,path)+'"');
     html=html.replaceAll('class="brand" href="/"','class="brand" href="'+localizedUrl(config,page.locale,'')+'"');
@@ -31,7 +32,7 @@ export default function application(api){
   });
   api.registerGenerator('ishare-assets',async({config,renderLayout})=>[
     ...await Promise.all(['en','zh-CN','zh-TW'].map(async locale=>({path:'profile-shell-'+locale+'.html',body:await renderLayout({title:'PROFILE_NAME_TOKEN',locale,urlPath:'/profile-shell-'+locale+'.html',structuredData:false},translate(await readFile(new URL('./public-profile.html',import.meta.url),'utf8'),locale))}))),
-    {path:'assets.json',contentType:'application/json',body:JSON.stringify({app:config.assetManifest['/ishare/app.js'],media:config.assetManifest['/ishare/media-viewer.js'],playerStyle:config.assetManifest['/ishare/player.css'],avatars:config.assetManifest['/ishare/avatars.js'],style:config.assetManifest['/style.css'],shells:Object.fromEntries(['en','zh-CN','zh-TW'].map(locale=>[locale,'/share-shell-'+locale+'.html']))})},
+    {path:'assets.json',contentType:'application/json',body:JSON.stringify({app:config.assetManifest['/ishare/app.js'],media:config.assetManifest['/ishare/media-viewer.js'],playerStyle:config.assetManifest['/ishare/player.css'],avatars:config.assetManifest['/ishare/avatars.js'],share:config.assetManifest['/ishare/sharing.js'],style:config.assetManifest['/style.css'],shells:Object.fromEntries(['en','zh-CN','zh-TW'].map(locale=>[locale,'/share-shell-'+locale+'.html']))})},
     ...await Promise.all(['en','zh-CN','zh-TW'].map(async locale=>({path:'share-shell-'+locale+'.html',body:await renderLayout({title:'ISHARE_TITLE_TOKEN',locale,urlPath:'/share-shell-'+locale+'.html',structuredData:false},'ISHARE_BODY_TOKEN')})))
   ]);
 }

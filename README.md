@@ -2,7 +2,7 @@
 
 English is the default language at the site root. Traditional and Simplified Chinese remain available at /zh-TW/ and /zh-CN/.
 
-Write a story first, then add multiple image or video attachments. Publish complete attributed oEmbed posts or individual Markdown image links. The homepage lists only posts explicitly opted in by their publishers; My shares contains the composer, graphical quota usage and personal history. Post avatars link to public author profiles with introductions and published posts. Publishers sign in with GitHub; viewers need no account. Media is public and shareable.
+Write a story first, then add multiple image or video attachments. Publish complete attributed oEmbed posts or individual Markdown image links. The homepage lists only posts explicitly opted in by their publishers; My shares focuses on the composer, graphical quota usage and publishing feedback; personal history and owner-only deletion controls live on the profile. Post avatars link to public author profiles with introductions and published posts. Publishers sign in with GitHub; viewers need no account. Media is public and shareable.
 
 When embedded in an EdgePress article, the gallery inherits the host's colors and reports its natural height, keeping attachment controls and the full caption visible. The host loads visible posts after service consent; unrelated message senders cannot change the frame's palette or layout.
 
@@ -12,7 +12,9 @@ When embedded in an EdgePress article, the gallery inherits the host's colors an
 
 ![ishare homepage illustration with its black bear mascot](content/assets/brand/bear-banner.ed22b23efa24f8a8.webp)
 
-![Text-first multi-attachment composer, local demonstration data](docs/images/my-shares-desktop.png)
+![From writing a story to publishing one mixed-media post](docs/images/publishing-en.gif)
+
+![Sharing a link, complete embed or independent Markdown attachments](docs/images/sharing-en.gif)
 
 ![Upload progress with byte totals and a separate confirmation stage, local demonstration data](docs/images/upload-progress.png)
 
@@ -22,7 +24,7 @@ When embedded in an EdgePress article, the gallery inherits the host's colors an
 
 ![Shared media-viewer controls in a narrow-screen local component demo](docs/images/media-player-mobile.png)
 
-![Real component demo: playback speed selection and scrolling](docs/images/media-player-controls.gif)
+![Seeking, selected 2x playback and original-image inspection](docs/images/media-controls-en.gif)
 
 ![Enlarged playback speed controls](docs/images/media-speed-menu-detail.png)
 

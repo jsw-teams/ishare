@@ -73,7 +73,7 @@ export class Repository {
   snapshot(hash,page,ownerId,adminIds,now){
     const session=hash?this.session(hash,now):null,settings=this.quotaSettings(now),account=session?this.account(session.user.id,settings.defaults,ownerId,now):null;
     let initial=null;
-    if(session){if(page==='mine')initial={history:this.history(session.user.id)};if(page==='profile')initial={rights:{items:this.rights(session.user.id).filter(item=>item.kind!=='appeal')}};if(page==='appeal')initial={rights:{items:this.rights(session.user.id).filter(item=>item.kind==='appeal')}};if(page==='admin'&&(session.user.id===ownerId||adminIds.includes(session.user.id)))initial=session.user.id===ownerId?{settings}:{users:this.users('',settings.defaults,ownerId,now)};}
+    if(session){if(page==='profile')initial={rights:{items:this.rights(session.user.id).filter(item=>item.kind!=='appeal')}};if(page==='appeal')initial={rights:{items:this.rights(session.user.id).filter(item=>item.kind==='appeal')}};if(page==='admin'&&(session.user.id===ownerId||adminIds.includes(session.user.id)))initial=session.user.id===ownerId?{settings}:{users:this.users('',settings.defaults,ownerId,now)};}
     return {session,settings,account,initial};
   }
   logout(hash) { this.sql.exec('DELETE FROM sessions WHERE id=?',hash); }

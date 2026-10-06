@@ -13,7 +13,7 @@ test('page snapshots use one DO call, preserve ownership and admin gates, and ne
   const item=media();store.reserve(item,limits,clock);store.attach(item.id,'provider-id-123456789012345','https://upload.imagedelivery.net/test',clock);store.publish(item.id,'42',0,clock,'99');store.requestRight('42','other','Only mine',clock);store.requestRight('43','other','Private other user',clock);
   async function read(identity,page){calls.length=0;const response=await handle(request('session',{...identity,resource:page}),env,{waitUntil(){}});assert.equal(response.status,200);assert.equal(response.headers.get('Cache-Control'),'no-store');assert.equal(response.headers.get('Access-Control-Allow-Origin'),null);assert.deepEqual(calls,['snapshot']);return response.json();}
   assert.equal((await read({},'mine')).initial,null);
-  const mine=await read(publisher,'mine');assert.equal(mine.initial.history.items[0].id,item.id);assert.equal(mine.initial.history.items[0].provider_id,undefined);assert.equal(mine.initial.history.items[0].upload_url,undefined);
+  const mine=await read(publisher,'mine');assert.equal(mine.initial,null,'Publishing does not fetch unrelated history');
   const profile=await read(publisher,'profile');assert.deepEqual(profile.initial.rights.items.map(item=>item.message),['Only mine']);
   assert.equal((await read(publisher,'admin')).initial,null);assert.equal((await read(publisher,'admin')).isAdmin,false);
   const admin=await read(moderator,'admin');assert.ok(admin.initial.users);assert.equal(admin.initial.settings,undefined);

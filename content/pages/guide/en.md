@@ -13,35 +13,30 @@ blocks:
           bannerAlt: Black bear sharing photographs
           bannerWidth: 1600
           bannerHeight: 640
-  - columns: 2
+  - columns: 1
     cells:
-      - - type: section
-          title: Write your story
-          tone: soft
-          blocks:
-            - type: text
-              text: Open My shares, sign in with GitHub and write what you want to share.
-      - - type: section
-          title: Add images and videos
-          tone: soft
-          blocks:
-            - type: text
-              text: Add images or videos below your words. Preview or remove attachments before publishing.
-  - columns: 2
+      - - type: media-text
+          mediaType: image
+          src: /brand/ishare-workflow-en.241b4f653f209572.webp
+          animationSrc: /brand/ishare-workflow-en.241b4f653f209572.gif
+          animationDuration: 33531
+          alt: From story to published post
+          title: From story to published post
+          text: Write, attach photos and video, then follow the upload and preparation stages. The result offers View post, Share post and My profile.
+  - columns: 1
     cells:
-      - - type: section
-          title: Choose homepage visibility
-          tone: soft
-          blocks:
-            - type: text
-              text: Choose Show this post on the ishare homepage to share it with the community.
-      - - type: section
-          title: Share a complete post or Markdown links
-          tone: soft
-          blocks:
-            - type: text
-              text: Your sharing history provides a complete-post oEmbed iframe and Markdown links, one per image. Video Markdown
-                links open a viewing page. You can change homepage visibility or delete a share from the history.
+      - - type: media-text
+          mediaType: image
+          src: /brand/ishare-sharing-en.b1cd8e9e6a35e29b.webp
+          animationSrc: /brand/ishare-sharing-en.b1cd8e9e6a35e29b.gif
+          animationDuration: 17746
+          alt: Share it your way
+          title: Share it your way
+          text: Open Share post to copy a link, full-post embed code or individual Markdown media links.
+  - columns: 1
+    cells:
+      - - type: text
+          text: Your post history lives on My profile; only you see deletion and homepage inclusion controls.
   - columns: 1
     cells:
       - - type: link-list

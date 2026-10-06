@@ -77,5 +77,9 @@
   "embedReady": "你已同意 {service}。点击“加载媒体”才会连接平台，当前尚未加载。",
   "embedLoading": "正在加载 {service} 媒体…",
   "embedLoaded": "已加载 {service} 媒体。",
-  "embedDisabled": "本站已关闭 {service} 服务，此媒体未加载。"
+  "embedDisabled": "本站已关闭 {service} 服务，此媒体未加载。",
+  "demoPlay": "观看操作演示",
+  "demoPause": "暂停演示",
+  "demoReplay": "从头重播",
+  "demoError": "演示暂时无法加载，请重试。"
 }

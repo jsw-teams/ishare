@@ -1,44 +1,33 @@
 import {icons} from './icons.js';
-import {confirmAction} from './dialog.js';
+import {openShare} from './sharing.js';
 import {videoMetadata} from './video-metadata.js';
 import {quotaCard} from './quota.js';
 import {messages} from './i18n.js';
 import {uploadFile} from './upload.js';
 import {uploadProgress} from './upload-progress.js';
 import {serviceClient,showAccount,bindAccount} from './account.js';
-import {postPreview,emptyState} from './cards.js';
-const form=document.querySelector('#publish-form'),status=document.querySelector('#status'),library=document.querySelector('#library');
+const form=document.querySelector('#publish-form'),status=document.querySelector('#status');
 const dictionary=messages(document.documentElement.lang),t=key=>dictionary[key]||key;
-let session=null,controller=null,entries=[],items=[],next=null,postId=crypto.randomUUID().replaceAll('-','');
+let session=null,controller=null,entries=[],postId=crypto.randomUUID().replaceAll('-','');
 const client=serviceClient('mine'),api=client.request;
 const progressUI=uploadProgress(t);
 const notify=key=>{status.className='feedback';status.textContent=t(key);};
 const reason=error=>[401,403].includes(error.upstreamStatus)?'uploadPermissionFailed':error.name==='AbortError'?'stopped':['upload_quota','storage_quota','rate_limited'].includes(error.message)?'quota':error.message==='file_too_large'?'tooLarge':error.message==='processing'?'processingWait':['invalid_upstream','unsafe_upstream','invalid_state'].includes(error.message)?'uploadConfirmFailed':error.message==='upload_failed'?'publishRetry':error.message==='invalid_upload_offset'?'uploadOffsetFailed':['invalid_duration','unsupported_media_type','unsupported'].includes(error.message)?'unsupported':error.status===503?'unavailable':'error';
 const notice=error=>notify(reason(error));
 function button(label,action){const node=document.createElement('button');node.type='button';node.textContent=t(label);node.addEventListener('click',async()=>{node.disabled=true;try{await action();}catch(error){notice(error);}finally{node.disabled=false;}});return node;}
-function linkField(card,label,value){const row=document.createElement('label'),name=document.createElement('span'),input=document.createElement(['embed','markdown'].includes(label)?'textarea':'input');name.textContent=t(label);input.readOnly=true;input.value=value;if(input.tagName==='TEXTAREA')input.rows=3;row.append(name,input,button('copy',async()=>{try{await navigator.clipboard.writeText(value);notify('copied');}catch{input.focus();input.select();}}));card.append(row);}
 function preview(){entries.sort((a,b)=>Number((b.record?.kind||b.file?.type.split('/')[0])==='video')-Number((a.record?.kind||a.file?.type.split('/')[0])==='video'));const root=document.querySelector('#attachment-preview');root.replaceChildren();document.querySelector('#selected-file').hidden=!entries.length;document.querySelector('#selected-file').textContent=t('attachments')+': '+entries.length+' / 50';for(const entry of entries){const card=document.createElement('div');card.className='attachment-tile';if(entry.phase)card.dataset.state=entry.phase;const name=document.createElement('p');name.textContent=entry.file?.name||entry.record?.title||t('pending');if(entry.preview||entry.file?.type.startsWith('image/')){entry.preview??=URL.createObjectURL(entry.file);const img=document.createElement('img');img.src=entry.preview;img.alt=entry.file.name;card.append(img);}else if(entry.record){const img=document.createElement('img');img.src='/'+(entry.record.kind==='image'?'i':'v')+'/'+entry.record.id+'/thumbnail';img.alt=entry.record.title;card.append(img);}else if(entry.file?.type.startsWith('video/')){const placeholder=document.createElement('div'),icon=document.createElement('span'),hint=document.createElement('small');placeholder.className='video-preview-placeholder';icon.innerHTML=icons.play;icon.setAttribute('aria-hidden','true');hint.textContent=t('previewUnavailable');placeholder.append(icon,hint);card.append(placeholder);}const state=document.createElement('span');state.className='attachment-state';state.hidden=!entry.phase;state.textContent=entry.phase==='ready'?t('uploadComplete'):entry.phase==='uploading'?t('progress')+' '+Math.round((entry.loaded||0)*100)+'%':t(entry.phase==='retry'?'pending':'processing');card.append(name,state,button('removeAttachment',async()=>{if(controller)return;if(entry.grant)await discard(entry);releasePreview(entry);entries=entries.filter(value=>value!==entry);preview();}));root.append(card);}}
-function render(){
- library.replaceChildren();if(!items.length){emptyState(library,t('empty'));return;}
- for(const item of items){const card=item.state==='published'?postPreview(item,t):document.createElement('article');if(item.state==='published'){
-   linkField(card,'share',item.shareUrl);linkField(card,'embed',item.embedCode);linkField(card,'markdown',item.markdown);
-   if(item.kind==='post'){const label=document.createElement('label'),check=document.createElement('input'),span=document.createElement('span');label.className='check';check.type='checkbox';check.checked=item.listed;span.textContent=t('listed');label.append(check,span);check.addEventListener('change',async()=>{check.disabled=true;try{await api('set-visibility',{resource:item.id,body:{listed:check.checked}});item.listed=check.checked;}catch(error){check.checked=item.listed;notice(error);}finally{check.disabled=false;}});card.append(label);}
-   else card.append(button('attachExisting',async()=>{if(entries.length>=50||entries.some(entry=>entry.record?.id===item.id))return;entries.push({record:item});preview();notify('attachmentReady');}));
- }else{const p=document.createElement('p');p.textContent=item.title+' / '+t(item.state==='deleting'?'deleting':'pending');card.append(p);}
- card.append(button('remove',async()=>{if(!await confirmAction(t('confirm')))return;await api(item.kind==='post'?'delete-post':'delete',{resource:item.id,body:{}});items=items.filter(value=>value.id!==item.id);render();await refresh();notify('removed');}));library.append(card);}
-}
 function showQuotas(account){
  const root=document.querySelector('#quota-summary');root.hidden=!account;if(!account)return;
  const format=new Intl.NumberFormat(document.documentElement.lang,{maximumFractionDigits:1}),cards=document.querySelector('#quota-cards');cards.replaceChildren();
  for(const [key,field,scale,label]of [['image','images',1,'quotaImages'],['video','videoSeconds',60,'quotaVideos'],['daily','dailyUploads',1,'quotaDaily']])cards.append(quotaCard(key,t(label),(account.usage[field]||0)/scale,account.limits[field]===null?null:account.limits[field]/scale,format,t));
 }
 async function refresh(){
- status.className='feedback data-loading';status.textContent=t('loading');library.setAttribute('aria-busy','true');
+ status.className='feedback data-loading';status.textContent=t('loading');
  try{session=await client.read();showAccount(session);showQuotas(session.account);form.querySelector('fieldset').disabled=!session.canPublish||!!controller;form.classList.toggle('publisher-locked',!session.canPublish);const gate=document.querySelector('#publisher-gate'),login=document.querySelector('#publisher-login');gate.hidden=!!session.canPublish;document.querySelector('#gate-title').textContent=t(!session.user?'gateTitle':'gateSuspended');document.querySelector('#gate-message').textContent=t(!session.loginAvailable?'gateUnavailable':!session.user?'gateHint':'gateAccountHint');login.hidden=!!session.user||!session.loginAvailable;
- if(session.user&&!session.canPublish&&!session.account?.erasing){const profileLink=document.querySelector('.account-dropdown a[href*="profile/"]');location.replace(profileLink.href.replace('profile/','appeal/'));return;}if(session.user){const data=session.initial.history;items=data.items;next=data.next;}else{items=[];next=null;}render();document.querySelector('#more').hidden=!next;
+ if(session.user&&!session.canPublish&&!session.account?.erasing){const profileLink=document.querySelector('.account-dropdown a[href*="profile/"]');location.replace(profileLink.href.replace('profile/','appeal/'));return;}const personal=document.querySelector('#compose-profile-link');personal.hidden=!session.user;if(session.user)personal.href='/u/'+session.user.id;
  const accountNotice=document.querySelector('#account-notice');accountNotice.hidden=!session.account?.note&&!session.account?.erasing&&!session.quotaNotice;accountNotice.textContent=session.account?.erasing?t('erasePending'):(session.account?.note||'')+(session.account?.notice?' / '+t('scheduled')+': '+new Date(session.account.notice.effective*1000).toLocaleString():'')+(session.quotaNotice?' / '+session.quotaNotice.note+' / '+t('scheduled')+': '+new Date(session.quotaNotice.effective*1000).toLocaleString():'');
  if(!controller)notify(!session.loginAvailable?'unavailable':!session.user?'loginRequired':!session.canPublish?'unavailable':'available');
- }catch(error){notice(error);}finally{library.removeAttribute('aria-busy');status.classList.remove('data-loading');}
+ }catch(error){notice(error);}finally{status.classList.remove('data-loading');}
 }
 function releasePreview(entry){entry.video?.dispose();if(entry.preview)URL.revokeObjectURL(entry.preview);}
 function clearDraft(){for(const entry of entries)releasePreview(entry);entries=[];postId=crypto.randomUUID().replaceAll('-','');form.reset();preview();}
@@ -60,7 +49,7 @@ form.addEventListener('submit',async event=>{
    stage='sendingMedia';progressUI.stage(stage,index);await uploadFile(file,entry.grant,value=>progressUI.transfer(index,value),{signal});entry.uploaded=true;
    stage='confirmingMedia';progressUI.stage(stage,index);entry.record=await publish(entry.grant.id,signal);signal.throwIfAborted();progressUI.ready(index);
  }
- signal.throwIfAborted();current=null;stage='publishingPost';progressUI.stage(stage);postStarted=true;await api('create-post',{resource:postId,body:{caption:form.elements.caption.value,mediaIds:entries.map(entry=>entry.record.id),listed:form.elements.listed.checked}});signal.throwIfAborted();complete=true;notify('success');progressUI.finish(true,status.textContent);clearDraft();
+ signal.throwIfAborted();current=null;stage='publishingPost';progressUI.stage(stage);postStarted=true;const published=await api('create-post',{resource:postId,body:{caption:form.elements.caption.value,mediaIds:entries.map(entry=>entry.record.id),listed:form.elements.listed.checked}});signal.throwIfAborted();complete=true;notify('success');progressUI.finish(true,status.textContent);const result=document.querySelector('#publish-result');result.hidden=false;document.querySelector('#published-caption').textContent=published.caption||'';document.querySelector('#published-open').href=published.shareUrl;document.querySelector('#published-profile').href='/u/'+session.user.id;document.querySelector('#published-share').onclick=event=>openShare(published,event.currentTarget);clearDraft();
  }catch(error){const cancelled=error.name==='AbortError',detail=cancelled?'':(current?current.file.name+' / ':'')+t(stage)+' / '+t(reason(error));if(!cancelled)console.warn('ishare upload failed',{code:/^[a-z_]{1,64}$/.test(error.message)?error.message:'upload_failed',stage:error.stage||stage,kind:current?.file.type.startsWith('video/')?'video':current?'image':'post',status:error.status||0,upstreamStatus:error.upstreamStatus||0});progressUI.stage('cleaningUpload');let cleaned=true;
   if(postStarted)try{await api('discard-post',{resource:postId,body:{}});}catch{cleaned=false;}
   if(cleaned)for(const entry of entries.filter(entry=>entry.started)){try{await discard(entry);}catch{cleaned=false;}}
@@ -68,6 +57,5 @@ form.addEventListener('submit',async event=>{
  }finally{controller=null;const message=status.textContent;await refresh();status.textContent=message;status.className='feedback '+(complete?'feedback-success':'feedback-error');}
 });
 bindAccount({client,refresh,notice});
-document.querySelector('#more').addEventListener('click',async()=>{try{const data=await api('history',{resource:next});items.push(...data.items);next=data.next;render();document.querySelector('#more').hidden=!next;}catch(error){notice(error);}});
 const loginError=new URLSearchParams(location.hash.slice(1)).get('login-error');if(loginError){const box=document.querySelector('#login-error'),keys={github_credentials_invalid:'loginCredentials',github_callback_mismatch:'loginCallback',github_code_expired:'loginExpired',expired_oauth_state:'loginExpired',invalid_oauth_state:'loginExpired',github_pkce_failed:'loginExpired',github_email_unverified:'loginEmail',github_identity_unavailable:'loginIdentity',github_exchange_unavailable:'loginExchange',github_exchange_network:'loginNetwork',github_exchange_not_found:'loginEndpoint',github_exchange_denied:'loginDenied',github_exchange_redirected:'loginDenied',github_exchange_rejected:'loginExchange',github_rate_limited:'loginRate',login_cancelled:'loginCancelled'};box.hidden=false;box.textContent=t(keys[loginError]||'loginFailed');box.focus();history.replaceState(null,'',location.pathname);}
 window.addEventListener('pagehide',()=>{for(const entry of entries)releasePreview(entry);controller?.abort();},{once:true});void refresh();

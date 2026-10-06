@@ -13,34 +13,30 @@ blocks:
           bannerAlt: Black bear sharing photographs
           bannerWidth: 1600
           bannerHeight: 640
-  - columns: 2
+  - columns: 1
     cells:
-      - - type: section
-          title: 编辑文字
-          tone: soft
-          blocks:
-            - type: text
-              text: 进入“我的分享”，使用 GitHub 登录，写下想分享的文字。
-      - - type: section
-          title: 添加图片和视频
-          tone: soft
-          blocks:
-            - type: text
-              text: 在文字下方添加图片或视频，可预览和移除附件。
-  - columns: 2
+      - - type: media-text
+          mediaType: image
+          src: /brand/ishare-workflow-zh.ebed75cc5368ac89.webp
+          animationSrc: /brand/ishare-workflow-zh.ebed75cc5368ac89.gif
+          animationDuration: 29594
+          alt: 从故事到发表成功
+          title: 从故事到发表成功
+          text: 先写文字，再添图片与视频。进度弹窗显示上传与处理状态，成功后可查看帖子、分享或进入个人主页。
+  - columns: 1
     cells:
-      - - type: section
-          title: 选择是否加入首页
-          tone: soft
-          blocks:
-            - type: text
-              text: 勾选“愿意将这篇帖子展示在爱分享首页”，让大家在首页看到你的分享。
-      - - type: section
-          title: 完整帖子或 Markdown 分享
-          tone: soft
-          blocks:
-            - type: text
-              text: 分享历史提供完整图文帖的 oEmbed 嵌入代码，以及逐张图片的 Markdown 链接；视频链接打开播放页。可随时调整首页展示选择或删除分享。
+      - - type: media-text
+          mediaType: image
+          src: /brand/ishare-sharing-zh.d07f438c74218bef.webp
+          animationSrc: /brand/ishare-sharing-zh.d07f438c74218bef.gif
+          animationDuration: 17876
+          alt: 按自己的方式分享
+          title: 按自己的方式分享
+          text: 点开“分享帖子”，复制链接、完整图文帖嵌入代码，或各个附件的 Markdown 链接。
+  - columns: 1
+    cells:
+      - - type: text
+          text: 历史统一放在“我的主页”，删除与首页展示开关只对本人可见。
   - columns: 1
     cells:
       - - type: link-list
