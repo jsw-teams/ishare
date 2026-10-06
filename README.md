@@ -89,7 +89,7 @@ blocks:
           title: Shared image or video
 ```
 
-EdgePress waits for current service consent **and** a visitor click. Metadata uses fixed `/api` with `X-Service-Action: oembed` and `X-Service-Resource` headers. Standard consumers can use `/oembed?url=...`; the standard protocol is an explicit exception to business API header routing. Media delivery URLs contain opaque application IDs and encrypted HLS resource tickets, never provider IDs or original delivery URLs. One-time direct upload URLs are visible to the authenticated uploader, and grant neither account access nor playback access.
+EdgePress loads visible embeds after visitors save consent for ishare. Metadata uses fixed `/api` with `X-Service-Action: oembed` and `X-Service-Resource` headers. Standard consumers can use `/oembed?url=...`; the standard protocol is an explicit exception to business API header routing. Media delivery URLs contain opaque application IDs and encrypted HLS resource tickets, never provider IDs or original delivery URLs. One-time direct upload URLs are visible to the authenticated uploader, and grant neither account access nor playback access.
 
 Hashed CSS, JavaScript and bundled HLS dependencies cache for one year. Public media caches for up to five minutes; HTML for thirty seconds. Private page bootstrap reads session and initial page data in one authorized DO call. Hidden admin sections load on demand; identical in-flight reads share one request. Sessions, administration and rights requests are never publicly cached. Missing or unavailable upstream media shows an accessible placeholder and explicit retry on cards, share pages and embeds, preserving text and other attachments. Delivery failures do not erase records or alter storage quotas. No external player CDN, analytics, advertising, paywall or blurred-media flow is included.
 
@@ -104,3 +104,15 @@ The canonical application directory is `web/ishare.js.gripe`. The `jsw-teams/ish
 Configure the operator deployment using the [Chinese configuration guide](docs/configuration.md). EdgePress is a pinned dependency; its framework source is not copied into this project.
 
 Failed uploads and exact metadata-matched duplicate allocations are removed automatically without manual reconciliation. One-time DO alarms run only while pending uploads/removals/erasure exist; no cron runs while idle. Restricted sign-ins go to `/appeal/`; other data rights remain in `/profile/`. Native file-control chrome, playback controls and confirmation popups use the local site UI. Video cards show proxied thumbnails and selected videos show a real local preview frame.
+
+### Embed in an article
+
+Append the ishare service to your existing `plugins.consent.services` list, then add the following to the article’s YAML front matter. Replace the example URL with your published post link. Save and run `edgepress server`; open the article from the homepage and allow ishare to display the post.
+
+```yaml
+embeds:
+  - integration: ishare
+    url: https://ishare.js.gripe/s/0726bea158a144129dd3b70468f1a0fc
+```
+
+The sharing recording shows the actual editor and the resulting consent-controlled gallery. Project demonstrations themselves use manual playback and a draggable progress bar.

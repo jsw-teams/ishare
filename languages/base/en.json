@@ -83,5 +83,6 @@
   "demoReplay": "Replay demo",
   "demoError": "The walkthrough could not load. Please try again.",
   "demoResume": "Continue demo",
-  "demoLoading": "Loading demo…"
+  "demoLoading": "Loading demo…",
+  "demoSeek": "Demo progress"
 }

@@ -83,5 +83,6 @@
   "demoReplay": "重新播放",
   "demoError": "演示暂时无法加载，请重试。",
   "demoResume": "继续播放",
-  "demoLoading": "正在加载演示…"
+  "demoLoading": "正在加载演示…",
+  "demoSeek": "演示进度"
 }

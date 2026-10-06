@@ -83,5 +83,6 @@
   "demoReplay": "重新播放",
   "demoError": "示範暫時無法載入，請重試。",
   "demoResume": "繼續播放",
-  "demoLoading": "正在載入示範…"
+  "demoLoading": "正在載入示範…",
+  "demoSeek": "示範進度"
 }

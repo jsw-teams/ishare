@@ -17,8 +17,8 @@ blocks:
     cells:
       - - type: media-text
           mediaType: image
-          src: /brand/ishare-workflow-zh.56fb3ed1cc7642da.webp
-          animationSrc: /brand/ishare-workflow-zh.5ffb196d31530b26.mp4
+          src: /brand/ishare-workflow-zh.ee00752a674aa08b.webp
+          animationSrc: /brand/ishare-workflow-zh.38460b47558b9f33.mp4
           alt: 从故事到发表成功
           title: 从故事到发表成功
           text: 先写文字，再添图片与视频。进度弹窗显示上传与处理状态，成功后可查看帖子、分享或进入个人主页。
@@ -26,11 +26,11 @@ blocks:
     cells:
       - - type: media-text
           mediaType: image
-          src: /brand/ishare-sharing-zh.e0f3cde78734233f.webp
-          animationSrc: /brand/ishare-sharing-zh.95ad5a196328433e.mp4
-          alt: 按自己的方式分享
-          title: 按自己的方式分享
-          text: 点开“分享帖子”，复制链接、完整图文帖嵌入代码，或各个附件的 Markdown 链接。
+          src: /brand/ishare-sharing-zh.5c52ba8789fd5daf.webp
+          animationSrc: /brand/ishare-sharing-zh.bc1b758da697d4e0.mp4
+          alt: 把整篇帖子嵌入自己的网站
+          title: 把整篇帖子嵌入自己的网站
+          text: 复制帖子链接，贴进文章的 embeds 配置并保存。打开网站，同意加载爱分享后，照片和视频就在文章里一起显示，可以切换查看。
   - columns: 1
     cells:
       - - type: text
