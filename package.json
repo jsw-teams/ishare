@@ -14,8 +14,8 @@
     "icons:sync": "node tools/sync-icons.mjs"
   },
   "dependencies": {
-    "@jsw-teams/media-viewer": "https://codeload.github.com/jsw-teams/media-viewer/tar.gz/ea6729f0929ca1a7ca7c914a30f28c4f66cde392",
-    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/528e577ed1acd46e49f78886f5810d95fef10781"
+    "@jsw-teams/media-viewer": "https://codeload.github.com/jsw-teams/media-viewer/tar.gz/158ca15",
+    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/ee96d38"
   },
   "devDependencies": {
     "axe-core": "^4.13.0",
