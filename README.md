@@ -105,7 +105,7 @@ Failed uploads and exact metadata-matched duplicate allocations are removed auto
 
 ### Embed in an article
 
-Append the ishare service to your existing `plugins.consent.services` list, then add the following to the article’s YAML front matter. Replace the example URL with your published post link. Save and run `edgepress server`; open the article from the homepage and allow ishare to display the post.
+Append the ishare service to your existing `plugins.consent.services` list, then insert the following on its own line in the article body. Pages use the same syntax in a text block. Replace the example URL with your published post link. Save and run `edgepress server`; open the article from the homepage and allow ishare to display the post.
 
 ```md
 !embed[ishare](https://ishare.js.gripe/s/0726bea158a144129dd3b70468f1a0fc)
