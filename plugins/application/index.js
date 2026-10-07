@@ -15,6 +15,8 @@ export default function application(api){
     return html;
   });
   api.registerFilter('html:afterLayout',(html,{page,config})=>{
+    const latinFont=Object.entries(config.assetManifest||{}).find(([path])=>/^\/edgepress\/fonts\/noto-sans-latin-wght-normal\.[a-f0-9]{16}\.woff2$/.test(path))?.[1];
+    if(latinFont)html=html.replace('<head>','<head>\n<link rel="preload" as="font" type="font/woff2" crossorigin href="'+escape(latinFont)+'">');
     html=translate(html,page.locale).replaceAll(wordmarks.en,wordmarks[page.locale]).replaceAll('alt="ishare"','alt="'+messages(page.locale).brand+'"').replace(/ISHARE_ICON_([A-Z]+)/g,(_match,key)=>icons[key.toLowerCase()]);
     const brand=messages(page.locale).brand;
     html=html.replaceAll('aria-label="ishare"','aria-label="'+brand+'"').replaceAll('content="ishare"','content="'+brand+'"').replaceAll(' - ishare</title>',' - '+brand+'</title>');

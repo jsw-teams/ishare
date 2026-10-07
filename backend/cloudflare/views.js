@@ -43,7 +43,7 @@ export async function renderPage(item,env,site,embedded=false,preferred='en') {
   if(assets.avatars)body=body.replace('</body>',`<script type="module" src="${assets.avatars}"></script></body>`);
   if(attachments.length)body=body.replace('</body>',`<script type="module" src="${assets.media}"></script></body>`);
 
-  return new Response(body,{headers:headers({'Content-Type':'text/html; charset=utf-8','Cache-Control':'public, max-age=30',Vary:'Accept-Language','Content-Security-Policy':`default-src 'none'; img-src 'self' blob:; style-src 'self'; script-src 'self'; connect-src 'self'; media-src 'self' blob:; worker-src blob:; base-uri 'none'; form-action 'none'; frame-ancestors ${embedded?'https:':"'none'"}`},embedded)});
+  return new Response(body,{headers:headers({'Content-Type':'text/html; charset=utf-8','Cache-Control':'public, max-age=30',Vary:'Accept-Language','Content-Security-Policy':`default-src 'none'; font-src 'self'; img-src 'self' blob:; style-src 'self'; script-src 'self'; connect-src 'self'; media-src 'self' blob:; worker-src blob:; base-uri 'none'; form-action 'none'; frame-ancestors ${embedded?'https:':"'none'"}`},embedded)});
 }
 
 function localeFor(preferred){const first=(preferred||'en').split(',')[0];return /^zh-(TW|HK|Hant)/i.test(first)?'zh-TW':/^zh/i.test(first)?'zh-CN':'en';}
