@@ -17,8 +17,8 @@ blocks:
     cells:
       - - type: media-text
           mediaType: image
-          src: /brand/ishare-workflow-en.e507a50a7c20f038.webp
-          animationSrc: /brand/ishare-workflow-en.adcedde766f9ab9f.mp4
+          src: /brand/ishare-workflow-en.f51dc0c0fb17dcd6.webp
+          animationSrc: /brand/ishare-workflow-en.ccc62cee1fcdf156.mp4
           alt: From story to published post
           title: From story to published post
           text: Write, attach photos and video, then follow the upload and preparation stages. The result offers View post, Share post and My profile.
@@ -26,11 +26,11 @@ blocks:
     cells:
       - - type: media-text
           mediaType: image
-          src: /brand/ishare-sharing-en.63e20374b0d5e54c.webp
-          animationSrc: /brand/ishare-sharing-en.962e86ceddeb7914.mp4
+          src: /brand/ishare-sharing-en.0e3e4e1e8c49e94d.webp
+          animationSrc: /brand/ishare-sharing-en.5196a933b4fe32a4.mp4
           alt: Paste a shared post into your website
           title: Paste a shared post into your website
-          text: Copy the post link, paste it into the article’s embeds field and save. Open the website, allow ishare and browse the photo and video together inside the article.
+          text: Copy the post link, insert !embed[ishare](URL) in the article body and save. Open the website, allow ishare and browse the photo and video together inside the article.
   - columns: 1
     cells:
       - - type: text

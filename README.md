@@ -83,10 +83,8 @@ Register a flat consent service with `provider: oembed`, `backendUrl: https://is
 blocks:
   - columns: 1
     cells:
-      - - type: oembed
-          integration: ishare
-          url: https://ishare.js.gripe/s/REPLACE_WITH_REAL_SHARE_ID
-          title: Shared image or video
+      - - type: text
+          text: "!embed[ishare](https://ishare.js.gripe/s/REPLACE_WITH_REAL_SHARE_ID)"
 ```
 
 EdgePress loads visible embeds after visitors save consent for ishare. Metadata uses fixed `/api` with `X-Service-Action: oembed` and `X-Service-Resource` headers. Standard consumers can use `/oembed?url=...`; the standard protocol is an explicit exception to business API header routing. Media delivery URLs contain opaque application IDs and encrypted HLS resource tickets, never provider IDs or original delivery URLs. One-time direct upload URLs are visible to the authenticated uploader, and grant neither account access nor playback access.
@@ -109,10 +107,8 @@ Failed uploads and exact metadata-matched duplicate allocations are removed auto
 
 Append the ishare service to your existing `plugins.consent.services` list, then add the following to the article’s YAML front matter. Replace the example URL with your published post link. Save and run `edgepress server`; open the article from the homepage and allow ishare to display the post.
 
-```yaml
-embeds:
-  - integration: ishare
-    url: https://ishare.js.gripe/s/0726bea158a144129dd3b70468f1a0fc
+```md
+!embed[ishare](https://ishare.js.gripe/s/0726bea158a144129dd3b70468f1a0fc)
 ```
 
 The sharing recording shows the actual editor and the resulting consent-controlled gallery. Project demonstrations themselves use manual playback and a draggable progress bar.

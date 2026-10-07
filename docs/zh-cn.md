@@ -83,10 +83,8 @@ GitHub 登录需要 `GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET`，回调地址�
 blocks:
   - columns: 1
     cells:
-      - - type: oembed
-          integration: ishare
-          url: https://ishare.js.gripe/s/替换为真实分享ID
-          title: 图片或视频说明
+      - - type: text
+          text: "!embed[ishare](https://ishare.js.gripe/s/替换为真实分享ID)"
 ```
 
 需要访客授权该服务并点击“加载媒体”才发起请求。业务接口固定为 `/api`，操作名和资源 URL 在 HTTP 请求头传递。其他 oEmbed 客户端可使用标准 `/oembed` 发现接口。浏览器播放与查看只看到 `ishare.js.gripe` 的代理地址，HLS 内部资源也会重写；上传者会看到有时效的一次性上传地址，该地址不是账户凭据或播放地址。
@@ -108,10 +106,8 @@ blocks:
 
 ## 嵌入文章
 
-在网站 config.yml 的 `plugins.consent.services` 中注册爱分享，在文章已有的 YAML 元数据里加入下面的配置，并将示例地址换成自己发表的帖子链接。保存后运行 `edgepress server`，从首页点开文章。访客同意后，配文和图片、视频画廊会一起显示。演示采用手动播放，可拖动进度，暂停后保留原位置。
+在网站 config.yml 的 `plugins.consent.services` 中注册爱分享，在文章正文加入下面的嵌入语法，并将示例地址换成自己发表的帖子链接。保存后运行 `edgepress server`，从首页点开文章。访客同意后，配文和图片、视频画廊会一起显示。演示采用手动播放，可拖动进度，暂停后保留原位置。
 
-```yaml
-embeds:
-  - integration: ishare
-    url: https://ishare.js.gripe/s/0726bea158a144129dd3b70468f1a0fc
+```md
+!embed[ishare](https://ishare.js.gripe/s/0726bea158a144129dd3b70468f1a0fc)
 ```

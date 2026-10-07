@@ -56,13 +56,8 @@ blocks:
       - - type: text
           heading: 视频说明
           text: 文字与播放器可排列在同一行。
-      - - type: oembed
-          integration: youtube
-          url: https://www.youtube.com/watch?v=jNQXAC9IVRw
-          title: 分享视频
-          caption: 保留原链接，支持直接查看。
-          width: 640
-          height: 360
+      - - type: text
+          text: "!embed[youtube](https://www.youtube.com/watch?v=jNQXAC9IVRw)"
 ```
 
 导航与页脚配置支持 `url` 指向站内路径或完整外部 URL，可选 `target: _self` 或 `target: _blank`。外部链接不会被加上站内语言路径，下拉导航也遵循目标设置。
