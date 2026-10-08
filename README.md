@@ -1,5 +1,7 @@
 # ishare
 
+Curious about improving this project? Vibe Coding and AI-assisted contributions are welcome, with no tool restrictions. Start with [Contributing](CONTRIBUTING.md), follow [AGENTS.md](AGENTS.md), and share a small, understandable change with reproducible tests. [Report a bug or idea](https://github.com/jsw-teams/ishare/issues/new/choose) · [Security](SECURITY.md) · [License](LICENSE).
+
 English is the default language at the site root. Traditional and Simplified Chinese remain available at /zh-TW/ and /zh-CN/.
 
 Write a story first, then add multiple image or video attachments. Publish complete attributed oEmbed posts or individual Markdown image links. The homepage lists only posts explicitly opted in by their publishers; My shares focuses on the composer, graphical quota usage and publishing feedback; personal history and owner-only deletion controls live on the profile. Post avatars link to public author profiles with introductions and published posts. Publishers sign in with GitHub; viewers need no account. Media is public and shareable.
@@ -10,7 +12,7 @@ When embedded in an EdgePress article, the gallery inherits the host's colors an
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/jsw-teams/ishare)
 
-The black-bear wordmarks are generated raster artwork with transparent backgrounds; each language has its own image. Guide recordings play when visible and keep their position when paused or offscreen. Website playback uses progressive MP4s; these documentation exports remain GIFs.
+The black-bear wordmarks are generated raster artwork with transparent backgrounds; each language has its own image. Guide recordings start only on explicit Play and keep their position when paused or offscreen. Website playback uses progressive MP4s; these documentation exports remain GIFs.
 
 ![ishare homepage illustration with its black bear mascot](content/assets/brand/bear-banner.ed22b23efa24f8a8.webp)
 

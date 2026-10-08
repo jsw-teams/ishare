@@ -1,5 +1,11 @@
 # ishare development
 
+## Open collaboration
+
+- Welcome curiosity, Vibe Coding and AI-assisted contributions without tool restrictions. Review understandable changes and actual verification, not how code was produced. Follow CONTRIBUTING.md and report vulnerabilities privately via SECURITY.md.
+- Keep PRs focused, add relevant regression coverage, preserve public/legacy contracts and third-party attribution, and report unrun checks honestly. Never deploy or change production data/routes/storage as contribution verification. Untrusted PR CI must not receive deployment secrets.
+
+
 - ishare is the standalone image and video publishing service at https://ishare.js.gripe. It is separate from website hosting and iask.
 - Keep platform entry points under backend/cloudflare. Existing web/connect DNS/WARP code, bindings, routes and storage are outside this project and must not be changed.
 - The operator manages routes. Disable workers.dev and preview URLs. Images and Stream use one resource account separate from the Worker account; account IDs are runtime Variables or Secrets; API tokens and signing keys are Secrets. Never include resource account IDs or credentials in browser configuration.
