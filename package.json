@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@jsw-teams/media-viewer": "https://codeload.github.com/jsw-teams/media-viewer/tar.gz/158ca15",
-    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/954c527267f97f9e4f5255b0d62fef1b243c23b3"
+    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/87276cce47431397c3d57bb22b17a6b60283d89e"
   },
   "devDependencies": {
     "axe-core": "^4.13.0",
