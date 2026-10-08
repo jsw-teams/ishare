@@ -22,6 +22,8 @@ The black-bear wordmarks are generated raster artwork with transparent backgroun
 
 ![Upload progress with byte totals and a separate confirmation stage, local demonstration data](docs/images/upload-progress.png)
 
+Multi-file publishing transfers the complete batch before confirming its attachments, then publishes one post. The progress steps move from upload to confirmation to publication without restarting for each file. A 100% transfer bar means all bytes have arrived, not that provider processing or publication has finished. Cancellation and failed attempts still clean up newly allocated attachments.
+
 ![Personal center with editable display name, biography and data rights, local demonstration data](docs/images/profile-preview.png)
 
 ![User administration with selected tabs and graphical usage, local demonstration data](docs/images/admin-preview.png)
