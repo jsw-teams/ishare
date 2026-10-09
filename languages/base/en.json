@@ -1,4 +1,10 @@
 {
+  "dataSaverTitle": "Data usage",
+  "dataSaverAuto": "Automatic",
+  "dataSaverText": "Text only",
+  "dataSaverFull": "Full view",
+  "dataSaverNotice": "Text mode pauses images, fonts, document previews and optional external services. Load individual media when needed, or switch to full view.",
+  "dataSaverLoad": "Load this media",
   "home": "Home",
   "archives": "Journal",
   "noPosts": "No posts yet",

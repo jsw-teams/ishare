@@ -1,4 +1,10 @@
 {
+  "dataSaverTitle": "流量使用",
+  "dataSaverAuto": "自動",
+  "dataSaverText": "僅文字",
+  "dataSaverFull": "完整顯示",
+  "dataSaverNotice": "文字模式暫停載入圖片、字型、文件預覽及可選外部服務。需要時單獨載入媒體，或切換到完整顯示。",
+  "dataSaverLoad": "載入這項媒體",
   "home": "首頁",
   "archives": "見聞",
   "noPosts": "目前沒有文章",

@@ -8,7 +8,7 @@ await cp('static','.site-static',{recursive:true});
 await build({entryPoints:['node_modules/@jsw-teams/media-viewer/src/styles.css'],outfile:'.site-static/ishare/player.css',bundle:true,minify:true});
 const theme=await readFile('node_modules/edgepress/themes/default/assets/style.css','utf8');
 await writeFile('.site-static/ishare/consent.css',theme.split(/\r?\n/).filter(line=>line.startsWith('.privacy-manager')||line.startsWith('.page-builder')||line.startsWith('.edgepress-oembed')||line.startsWith('@media')&&(line.includes('.privacy-manager')||line.includes('.page-builder'))).join('\n'));
-await build({entryPoints:['static/ishare/player.js','static/ishare/media.js','static/ishare/media-viewer.js'],outdir:'.site-static/ishare',bundle:true,minify:true,format:'esm',target:'es2022',external:['./i18n.js','./player.js','./preview.js'],legalComments:'eof'});
+await build({entryPoints:['static/ishare/player.js','static/ishare/media.js','static/ishare/media-viewer.js','static/ishare/gallery-runtime.js'],outdir:'.site-static/ishare',bundle:true,minify:true,format:'esm',target:'es2022',external:['./i18n.js','./player.js','./preview.js','./gallery-runtime.js'],legalComments:'eof'});
 await writeFile('.site-static/_headers',`/*\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; connect-src 'self' https://upload.imagedelivery.net https://upload.cloudflarestream.com; media-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'\n`);
 await buildSite();
 await writeFile('dist/privacy.html',await readFile('dist/privacy/index.html'));

@@ -26,5 +26,7 @@ async function load(append=false){
  }catch{status.textContent=t('feedUnavailable');}finally{more.disabled=false;root.removeAttribute('aria-busy');}
 }
 async function refresh(){const session=await client.read();showAccount(session);const previous=owned;owned=String(session.user?.id)===owner;if(owned||previous!==owned)await load();}
-more.addEventListener('click',()=>void load(true));avatarFor(owner,document.querySelector('#public-profile-avatar'));
+more.addEventListener('click',()=>void load(true));
+function portrait(){avatarFor(owner,document.querySelector('#public-profile-avatar'));}
+portrait();document.addEventListener('edgepress:data-media',portrait);
 bindAccount({client,refresh,notice:()=>{status.textContent=t('error');}});void load();void refresh().catch(()=>{});

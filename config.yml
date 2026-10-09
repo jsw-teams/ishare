@@ -2,6 +2,18 @@ site:
   title: ishare
   description: Share images, videos and the stories behind them.
   url: https://ishare.js.gripe
+  dataSaver:
+    enabled: true
+    mode: auto
+    detectSlowConnection: true
+    respectBrowserPreference: true
+  externalLinks:
+    enabled: true
+    trustedOrigins:
+      - https://js.gripe
+      - https://iask.js.gripe
+      - https://ishare.js.gripe
+      - https://signal.js.gripe
   language: en
   head:
     titleSuffix: ishare

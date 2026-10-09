@@ -34,7 +34,7 @@ export default function application(api){
   });
   api.registerGenerator('ishare-assets',async({config,renderLayout})=>[
     ...await Promise.all(['en','zh-CN','zh-TW'].map(async locale=>({path:'profile-shell-'+locale+'.html',body:await renderLayout({title:'PROFILE_NAME_TOKEN',locale,urlPath:'/profile-shell-'+locale+'.html',structuredData:false},translate(await readFile(new URL('./public-profile.html',import.meta.url),'utf8'),locale))}))),
-    {path:'assets.json',contentType:'application/json',body:JSON.stringify({app:config.assetManifest['/ishare/app.js'],media:config.assetManifest['/ishare/media-viewer.js'],playerStyle:config.assetManifest['/ishare/player.css'],avatars:config.assetManifest['/ishare/avatars.js'],share:config.assetManifest['/ishare/sharing.js'],style:config.assetManifest['/style.css'],shells:Object.fromEntries(['en','zh-CN','zh-TW'].map(locale=>[locale,'/share-shell-'+locale+'.html']))})},
+    {path:'assets.json',contentType:'application/json',body:JSON.stringify({dataSaver:config.site.dataSaver.enabled,app:config.assetManifest['/ishare/app.js'],media:config.assetManifest['/ishare/media-viewer.js'],playerStyle:config.assetManifest['/ishare/player.css'],avatars:config.assetManifest['/ishare/avatars.js'],share:config.assetManifest['/ishare/sharing.js'],style:config.assetManifest['/style.css'],shells:Object.fromEntries(['en','zh-CN','zh-TW'].map(locale=>[locale,'/share-shell-'+locale+'.html']))})},
     ...await Promise.all(['en','zh-CN','zh-TW'].map(async locale=>({path:'share-shell-'+locale+'.html',body:await renderLayout({title:'ISHARE_TITLE_TOKEN',locale,urlPath:'/share-shell-'+locale+'.html',structuredData:false},'ISHARE_BODY_TOKEN')})))
   ]);
 }

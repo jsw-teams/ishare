@@ -11,6 +11,7 @@ export function publicRecord(item,site) {
 }
 const postLabel=item=>(item.caption||'').trim().split('\n')[0].slice(0,100)||'ishare';
 const markdownAlt=value=>String(value).replace(/[\\\[\]\r\n]/g,' ');
+function deferredMedia(markup,feature,label=''){return `<span class="edgepress-data-placeholder" data-edgepress-data-media data-data-feature="${feature}"><span data-data-description>${escape(label)}</span><template data-edgepress-data-html>${escape(markup)}</template><noscript>${markup}</noscript></span>`;}
 export function oembedCode(item,site,width=640,height=480){return `<iframe src="${site}/embed/${item.id}" title="${escape(item.kind==='post'?postLabel(item):item.title)}" width="${width}" height="${height}" loading="lazy" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-presentation" allow="fullscreen" allowfullscreen></iframe>`;}
 export function oembed(item,site,width=640,height=480) {
   width=Math.max(160,Math.min(1920,width));height=Math.max(120,Math.min(1440,height));
@@ -32,13 +33,15 @@ export async function renderPage(item,env,site,embedded=false,preferred='en') {
 
   const discovery=`<link rel="alternate" type="application/json+oembed" href="${site}/oembed?url=${encodeURIComponent(record.shareUrl)}">`;
   const shell=await env.ASSETS.fetch(new Request(site+assets.shells[locale]));if(!shell.ok)fail('assets_unavailable',503);
-  const content=`${!embedded?'<h1 class="visually-hidden">'+escape(t.brand)+'</h1>':''}<article class="shared-post">${media}${item.caption?`<p class="caption">${escape(item.caption)}</p>`:''}${attribution}</article>`;
+  const saving=assets.dataSaver&&!embedded;
+  const content=`${!embedded?'<h1 class="visually-hidden">'+escape(t.brand)+'</h1>':''}<article class="shared-post">${saving&&media?deferredMedia(media,'gallery',t.mediaLabel):media}${item.caption?`<p class="caption">${escape(item.caption)}</p>`:''}${saving?attribution.replace(/<img\b[^>]*>/g,picture=>deferredMedia(picture,'image')):attribution}</article>`;
 
   const source=(await shell.text()).replace(firstImage?/<meta property="og:image"[^>]*>/g:/$^/g,'');
-  let body=source.replaceAll('ISHARE_TITLE_TOKEN',escape(item.kind==='post'?postLabel(item):item.title)).replace(/https:\/\/[^"<>]+\/share-shell-[a-zA-Z-]+\.html/g,record.shareUrl).replace('ISHARE_BODY_TOKEN',content).replace('id="main"','id="main" class="viewer"').replace('</head>',`${attachments.length?`<link rel="stylesheet" href="${assets.playerStyle}">`:''}${discovery}<meta property="og:title" content="${escape(item.kind==='post'?postLabel(item):item.title)}"><meta property="og:type" content="${item.kind==='video'?'video.other':'article'}"><meta property="og:url" content="${record.shareUrl}">${firstImage?`<meta property="og:image" content="${site}/i/${firstImage.id}/thumbnail">`:''}</head>`);
-  if(attachments[0]?.kind==='video')body=body.replace('</head>',`<link rel="preload" as="image" href="${site}/v/${attachments[0].id}/thumbnail"></head>`);
+  const playerStyle=attachments.length?`<link rel="stylesheet" href="${assets.playerStyle}">`:'';
+  let body=source.replaceAll('ISHARE_TITLE_TOKEN',escape(item.kind==='post'?postLabel(item):item.title)).replace(/https:\/\/[^"<>]+\/share-shell-[a-zA-Z-]+\.html/g,record.shareUrl).replace('ISHARE_BODY_TOKEN',content).replace('id="main"','id="main" class="viewer"').replace('</head>',`${saving&&playerStyle?`<template data-edgepress-data-resource="style" data-data-feature="gallery">${playerStyle}</template><noscript>${playerStyle}</noscript>`:playerStyle}${discovery}<meta property="og:title" content="${escape(item.kind==='post'?postLabel(item):item.title)}"><meta property="og:type" content="${item.kind==='video'?'video.other':'article'}"><meta property="og:url" content="${record.shareUrl}">${firstImage?`<meta property="og:image" content="${site}/i/${firstImage.id}/thumbnail">`:''}</head>`);
+  if(attachments[0]?.kind==='video'){const preload=`<link rel="preload" as="image" href="${site}/v/${attachments[0].id}/thumbnail">`;body=body.replace('</head>',`${saving?`<template data-edgepress-data-resource="style" data-data-feature="gallery">${preload}</template><noscript>${preload}</noscript>`:preload}</head>`);}
   body=body.replace(/<select id="site-language"[\s\S]*?<\/select>/,'');
-  if(embedded)body=body.replace(/<html lang="([^"]+)">/,'<html lang="$1" class="embedded">').replace(/<header\b[\s\S]*?<\/header>/,'').replace(/<footer class="site-footer"[\s\S]*?<\/footer>/,'').replace(/<script\b[^>]*>[\s\S]*?<\/script>/g,'');
+  if(embedded)body=body.replace(/<template data-edgepress-data-resource="style"[^>]*>([\s\S]*?)<\/template>/g,'$1').replace(/<html lang="([^"]+)">/,'<html lang="$1" class="embedded">').replace(/<header\b[\s\S]*?<\/header>/,'').replace(/<footer class="site-footer"[\s\S]*?<\/footer>/,'').replace(/<script\b[^>]*>[\s\S]*?<\/script>/g,'');
   body=body.replace('</body>',sharing+(assets.share?`<script type="module" src="${assets.share}"></script>`:'')+'</body>');
   if(assets.avatars)body=body.replace('</body>',`<script type="module" src="${assets.avatars}"></script></body>`);
   if(attachments.length)body=body.replace('</body>',`<script type="module" src="${assets.media}"></script></body>`);

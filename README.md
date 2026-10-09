@@ -1,5 +1,7 @@
 # ishare
 
+Automatic data-saving view is enabled in `site.dataSaver`, with separate slow-network and browser-preference switches. The optional Share theme variant lives in `themes/share/assets/data-saver-theme.css`. Text mode keeps stories, author names, navigation and publishing controls; feed pictures and share-page galleries load only on request. Normal connections and Full view retain the complete application. Embedded galleries keep their existing host integration; the host can defer its iframe. External-link prompts are provided by the pinned EdgePress dependency.
+
 Curious about improving this project? Vibe Coding and AI-assisted contributions are welcome, with no tool restrictions. Start with [Contributing](CONTRIBUTING.md), follow [AGENTS.md](AGENTS.md), and share a small, understandable change with reproducible tests. [Report a bug or idea](https://github.com/jsw-teams/ishare/issues/new/choose) · [Security](SECURITY.md) · [License](LICENSE).
 
 English is the default language at the site root. Traditional and Simplified Chinese remain available at /zh-TW/ and /zh-CN/.

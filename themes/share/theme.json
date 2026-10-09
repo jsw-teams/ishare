@@ -1,4 +1,8 @@
 {
   "name": "share",
-  "description": "Accessible media publishing pages."
+  "description": "Accessible media publishing pages.",
+  "dataSaver": {
+    "stylesheet": "data-saver-theme.css",
+    "scripts": []
+  }
 }

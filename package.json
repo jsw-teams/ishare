@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "node tools/build.mjs",
-    "test": "node --test tests/*.test.mjs",
+    "test": "node --test --test-concurrency=2 tests/*.test.mjs",
     "dev": "npm run build && wrangler dev",
     "deploy": "npm run build && wrangler deploy",
     "deploy:cloudflare": "npm run deploy",
@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@jsw-teams/media-viewer": "https://codeload.github.com/jsw-teams/media-viewer/tar.gz/158ca15",
-    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/87276cce47431397c3d57bb22b17a6b60283d89e"
+    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/d4a181f92d1a6c035506ca88591492a5aec3097c"
   },
   "devDependencies": {
     "axe-core": "^4.13.0",

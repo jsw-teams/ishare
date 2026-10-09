@@ -13,6 +13,7 @@ export function serviceClient(page=''){
 let avatarUser=null,avatarUrl=null,generation=0;
 const publicAvatars=new Map();
 export function avatarFor(id,image){
+ if(!image||window.edgepressDataSaver?.mode==='text')return;
  if(!/^[1-9][0-9]{0,19}$/.test(id))return;
  if(!publicAvatars.has(id))publicAvatars.set(id,(async()=>{const response=await fetch('/api',{headers:{'X-Service-Action':'profile-avatar','X-Service-Resource':id},credentials:'omit',redirect:'error'});if(!response.ok)throw Error();return URL.createObjectURL(await response.blob());})());
  void publicAvatars.get(id).then(url=>{if(image.isConnected)image.src=url;}).catch(()=>publicAvatars.delete(id));
@@ -23,7 +24,7 @@ export function showAccount(session){
  if(!session.user){menu.open=false;document.querySelector('#menu-name').textContent='';}
  else{const name=session.profile?.displayName||session.user.name||session.user.login;document.querySelector('#menu-name').textContent=name;identity.querySelector('.account-label').textContent=name;}
  if(avatarUser===session.user?.id)return;
- avatarUser=session.user?.id;const current=++generation;if(avatarUrl)URL.revokeObjectURL(avatarUrl);avatarUrl=null;const slot=identity.querySelector('.account-avatar-slot');slot.replaceChildren();if(!session.user)return;
+ avatarUser=session.user?.id;const current=++generation;if(avatarUrl)URL.revokeObjectURL(avatarUrl);avatarUrl=null;const slot=identity.querySelector('.account-avatar-slot');slot.replaceChildren();if(!session.user||window.edgepressDataSaver?.mode==='text')return;
  const image=document.createElement('img');image.className='user-avatar';image.width=36;image.height=36;image.alt='';image.src='/brand/bear-favicon.52039e84b2f38015.png';slot.append(image);
  void (async()=>{try{const response=await fetch('/api',{headers:{'X-Service-Action':'avatar'},credentials:'same-origin',redirect:'error'});if(!response.ok)return;const blob=await response.blob();if(current!==generation)return;avatarUrl=URL.createObjectURL(blob);image.src=avatarUrl;document.dispatchEvent(new CustomEvent('ishare:avatar',{detail:avatarUrl}));}catch{}})();
 }

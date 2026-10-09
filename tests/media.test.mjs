@@ -25,7 +25,7 @@ test('the local player renders icons, uses keyboard controls and stops when the 
  try{for(const width of [320,1280]){
   const context=await browser.newContext({viewport:{width,height:844}});let playbackCalls=0,originalCalls=0;const errors=[];
   await context.route('**/*',async route=>{const url=new URL(route.request().url());assert.equal(url.origin,site);
-   if(url.pathname==='/s/'+post.id){const response=await renderPage(post,assets,site,false,'zh-CN');return route.fulfill({headers:Object.fromEntries(response.headers),body:(await response.text()).replaceAll('data-source="'+site+'/v/'+video.id+'/master.m3u8"','data-type="native" data-source="/fixture.webm"')});}
+   if(url.pathname==='/s/'+post.id){const response=await renderPage(post,assets,site,false,'zh-CN');return route.fulfill({headers:Object.fromEntries(response.headers),body:(await response.text()).replaceAll('data-source="'+site+'/v/'+video.id+'/master.m3u8"','data-type="native" data-source="/fixture.webm"').replaceAll('data-source=&quot;'+site+'/v/'+video.id+'/master.m3u8&quot;','data-type=&quot;native&quot; data-source=&quot;/fixture.webm&quot;')});}
    if(url.pathname.endsWith('/original'))originalCalls++;
    if(url.pathname==='/fixture.webm'){playbackCalls++;return route.fulfill({contentType:'video/webm',body:await readFile('tests/fixtures/preview.webm')});}
    if(url.pathname.startsWith('/v/')||url.pathname.startsWith('/i/')||url.pathname==='/api')return route.fulfill({contentType:'image/png',body:await readFile('content/assets/brand/bear-icon.3754101e8d6380da.png')});
