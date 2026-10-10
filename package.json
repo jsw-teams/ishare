@@ -16,14 +16,19 @@
   },
   "dependencies": {
     "@jsw-teams/media-viewer": "https://codeload.github.com/jsw-teams/media-viewer/tar.gz/158ca15",
-    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/bec80ffc0c00a9f9884712c19977e57c55a8b2e8"
+    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/e490f55c13fc477bad76c87553bc17ce75665afc"
+  },
+  "overrides": {
+    "@file-viewer/doc": {
+      "dompurify": "3.4.16"
+    }
   },
   "devDependencies": {
     "axe-core": "^4.13.0",
     "esbuild": "^0.28.2",
     "lucide-static": "1.52.0",
     "playwright": "^1.63.0",
-    "wrangler": "^4.145.0"
+    "wrangler": "^4.149.0"
   },
   "version": "202610.4.0"
 }
