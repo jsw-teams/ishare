@@ -1,4 +1,6 @@
 {
+  "serviceLoad": "載入這項服務",
+  "dataSaverLoading": "正在準備頁面…",
   "dataSaverTitle": "流量使用",
   "dataSaverAuto": "自動",
   "dataSaverText": "僅文字",

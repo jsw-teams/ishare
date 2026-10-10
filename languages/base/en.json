@@ -1,4 +1,6 @@
 {
+  "serviceLoad": "Load this service",
+  "dataSaverLoading": "Preparing this page…",
   "dataSaverTitle": "Data usage",
   "dataSaverAuto": "Automatic",
   "dataSaverText": "Text only",

@@ -1,4 +1,6 @@
 {
+  "serviceLoad": "加载这项服务",
+  "dataSaverLoading": "正在准备页面…",
   "dataSaverTitle": "流量使用",
   "dataSaverAuto": "自动",
   "dataSaverText": "仅文字",

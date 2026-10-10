@@ -4,6 +4,7 @@ site:
   url: https://ishare.js.gripe
   dataSaver:
     enabled: true
+    debug: false
     mode: auto
     detectSlowConnection: true
     respectBrowserPreference: true
