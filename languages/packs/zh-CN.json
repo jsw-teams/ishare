@@ -1,4 +1,7 @@
 {
+  "dataSaverLoadFailed": "页面必需资源加载失败。请重试，或切换可用的文字省流版。",
+  "dataSaverRetry": "重新加载",
+  "dataSaverProgressControls": "页面操作：已完成 {loaded} / {total} 个脚本",
   "dataSaverLoadingNotice": "正在加载完整版。你可以现在切换文字省流版，跳过字体与多媒体。",
   "dataSaverProgressStyles": "页面样式：已完成 {loaded} / {total} 个文件",
   "dataSaverProgressMedia": "首屏图片：已完成 {loaded} / {total}",

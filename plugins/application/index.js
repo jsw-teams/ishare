@@ -3,6 +3,7 @@ import {icons} from '../../static/ishare/icons.js';
 import {readFile} from 'node:fs/promises';
 import {messages} from '../../static/ishare/i18n.js';
 import {localizedUrl} from 'edgepress/src/i18n.js';
+import {dataSaverInlineAssets} from 'edgepress/src/data-saver.js';
 const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function translate(html,locale){const text=messages(locale);return html.replace(/(<[a-z][^>]*\bdata-i18n="([^"]+)"[^>]*>)([^<]*)(<\/[^>]+>)/gi,(_m,start,key,_value,end)=>start+escape(text[key]||key)+end);}
 export default function application(api){
@@ -34,7 +35,7 @@ export default function application(api){
   });
   api.registerGenerator('ishare-assets',async({config,renderLayout})=>[
     ...await Promise.all(['en','zh-CN','zh-TW'].map(async locale=>({path:'profile-shell-'+locale+'.html',body:await renderLayout({title:'PROFILE_NAME_TOKEN',locale,urlPath:'/profile-shell-'+locale+'.html',structuredData:false},translate(await readFile(new URL('./public-profile.html',import.meta.url),'utf8'),locale))}))),
-    {path:'assets.json',contentType:'application/json',body:JSON.stringify({dataSaver:config.site.dataSaver.enabled,app:config.assetManifest['/ishare/app.js'],media:config.assetManifest['/ishare/media-viewer.js'],playerStyle:config.assetManifest['/ishare/player.css'],avatars:config.assetManifest['/ishare/avatars.js'],share:config.assetManifest['/ishare/sharing.js'],style:config.assetManifest['/style.css'],shells:Object.fromEntries(['en','zh-CN','zh-TW'].map(locale=>[locale,'/share-shell-'+locale+'.html']))})},
+    {path:'assets.json',contentType:'application/json',body:JSON.stringify({dataSaver:config.site.dataSaver.enabled,dataSaverCsp:config.site.dataSaver.enabled?{script:dataSaverInlineAssets(config).scriptHash,style:dataSaverInlineAssets(config).styleHash}:null,app:config.assetManifest['/ishare/app.js'],media:config.assetManifest['/ishare/media-viewer.js'],playerStyle:config.assetManifest['/ishare/player.css'],avatars:config.assetManifest['/ishare/avatars.js'],share:config.assetManifest['/ishare/sharing.js'],style:config.assetManifest['/style.css'],shells:Object.fromEntries(['en','zh-CN','zh-TW'].map(locale=>[locale,'/share-shell-'+locale+'.html']))})},
     ...await Promise.all(['en','zh-CN','zh-TW'].map(async locale=>({path:'share-shell-'+locale+'.html',body:await renderLayout({title:'ISHARE_TITLE_TOKEN',locale,urlPath:'/share-shell-'+locale+'.html',structuredData:false},'ISHARE_BODY_TOKEN')})))
   ]);
 }

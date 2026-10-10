@@ -3,6 +3,13 @@ import {wordmarks} from '../../static/ishare/branding.js';
 import {icons} from '../../static/ishare/icons.js';
 import { escape, https, headers, fail } from './security.js';
 
+function inlineSources(assets) {
+  if (!assets.dataSaverCsp) return {script:'',style:''};
+  const {script,style} = assets.dataSaverCsp;
+  if (![script,style].every(value=>typeof value === 'string' && /^'sha256-[A-Za-z0-9+/]{43}='$/.test(value))) fail('assets_unavailable',503);
+  return {script:' '+script,style:' '+style};
+}
+
 export function publicRecord(item,site) {
   if(item.kind==='post'){const legacy=publicRecord({...item,kind:'image'},site),media=[...item.media].sort((a,b)=>Number(b.kind==='video')-Number(a.kind==='video')).map(child=>publicRecord(child,site));delete legacy.title;delete legacy.mediaUrl;delete legacy.bytes;delete legacy.mime;delete legacy.duration;return {...legacy,kind:'post',listed:!!item.listed,media,markdown:media.map(child=>child.kind==='image'?`![${markdownAlt(child.title)}](${child.mediaUrl})`:`[${markdownAlt(child.title)}](${child.shareUrl})`).join('\n\n'),embedCode:oembedCode(item,site)};}
   const author=JSON.parse(item.author);
@@ -42,11 +49,13 @@ export async function renderPage(item,env,site,embedded=false,preferred='en') {
   if(attachments[0]?.kind==='video'){const preload=`<link rel="preload" as="image" href="${site}/v/${attachments[0].id}/thumbnail">`;body=body.replace('</head>',`${saving?`<template data-edgepress-data-resource="style" data-data-feature="gallery">${preload}</template><noscript>${preload}</noscript>`:preload}</head>`);}
   body=body.replace(/<select id="site-language"[\s\S]*?<\/select>/,'');
   if(embedded)body=body.replace(/<template data-edgepress-data-resource="style"[^>]*>([\s\S]*?)<\/template>/g,'$1').replace(/<html lang="([^"]+)">/,'<html lang="$1" class="embedded">').replace(/<header\b[\s\S]*?<\/header>/,'').replace(/<footer class="site-footer"[\s\S]*?<\/footer>/,'').replace(/<script\b[^>]*>[\s\S]*?<\/script>/g,'');
+  if(embedded)body=body.replace(/<style\b[^>]*\bdata-edgepress-data-critical\b[^>]*>[\s\S]*?<\/style>/g,'');
   body=body.replace('</body>',sharing+(assets.share?`<script type="module" src="${assets.share}"></script>`:'')+'</body>');
   if(assets.avatars)body=body.replace('</body>',`<script type="module" src="${assets.avatars}"></script></body>`);
   if(attachments.length)body=body.replace('</body>',`<script type="module" src="${assets.media}"></script></body>`);
 
-  return new Response(body,{headers:headers({'Content-Type':'text/html; charset=utf-8','Cache-Control':'public, max-age=30',Vary:'Accept-Language','Content-Security-Policy':`default-src 'none'; font-src 'self'; img-src 'self' blob:; style-src 'self'; script-src 'self'; connect-src 'self'; media-src 'self' blob:; worker-src blob:; base-uri 'none'; form-action 'none'; frame-ancestors ${embedded?'https:':"'none'"}`},embedded)});
+  const inline=embedded?{script:'',style:''}:inlineSources(assets);
+  return new Response(body,{headers:headers({'Content-Type':'text/html; charset=utf-8','Cache-Control':'public, max-age=30',Vary:'Accept-Language','Content-Security-Policy':`default-src 'none'; font-src 'self'; img-src 'self' blob:; style-src 'self'${inline.style}; script-src 'self'${inline.script}; connect-src 'self'; media-src 'self' blob:; worker-src blob:; base-uri 'none'; form-action 'none'; frame-ancestors ${embedded?'https:':"'none'"}`},embedded)});
 }
 
 function localeFor(preferred){const first=(preferred||'en').split(',')[0];return /^zh-(TW|HK|Hant)/i.test(first)?'zh-TW':/^zh/i.test(first)?'zh-CN':'en';}
@@ -55,5 +64,7 @@ export async function renderProfile(profile,env,site,preferred='en'){
  const shell=await env.ASSETS.fetch(new Request(site+'/profile-shell-'+locale+'.html'));if(!shell.ok)fail('assets_unavailable',503);
  const values={PROFILE_NAME_TOKEN:profile.displayName,PROFILE_BIO_TOKEN:profile.bio,PROFILE_ID_TOKEN:profile.id};
  const body=(await shell.text()).replace(/PROFILE_(NAME|BIO|ID)_TOKEN/g,key=>escape(values[key])).replace(/https:\/\/[^"<>]+\/profile-shell-[a-zA-Z-]+\.html/g,site+'/u/'+profile.id).replace(/<select id="site-language"[\s\S]*?<\/select>/,'');
- return new Response(body,{headers:headers({'Content-Type':'text/html; charset=utf-8','Cache-Control':'public, max-age=30',Vary:'Accept-Language','Content-Security-Policy':"default-src 'self'; img-src 'self' blob:; style-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"})});
+ const assetResponse=await env.ASSETS.fetch(new Request(site+'/assets.json'));if(!assetResponse.ok)fail('assets_unavailable',503);
+ const inline=inlineSources(await assetResponse.json());
+ return new Response(body,{headers:headers({'Content-Type':'text/html; charset=utf-8','Cache-Control':'public, max-age=30',Vary:'Accept-Language','Content-Security-Policy':`default-src 'self'; img-src 'self' blob:; style-src 'self'${inline.style}; script-src 'self'${inline.script}; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`})});
 }

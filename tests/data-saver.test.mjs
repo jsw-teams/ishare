@@ -21,11 +21,15 @@ test('explicit text view keeps feed and profile stories without covers, avatars 
       await context.route('**/*', async route => {
         const url = new URL(route.request().url());
         assert.equal(url.origin, site);
-        if (url.pathname === '/u/42') return route.fulfill({ contentType: 'text/html', body: await (await renderProfile({ id: '42', displayName: 'River walker', bio: 'Stories from outdoors.', login: 'author' }, assets, site)).text() });
+        if (url.pathname === '/u/42') {
+          const response=await renderProfile({ id: '42', displayName: 'River walker', bio: 'Stories from outdoors.', login: 'author' }, assets, site);
+          return route.fulfill({headers:Object.fromEntries(response.headers),body:await response.text()});
+        }
         if (url.pathname === '/s/' + post.id) {
           const author = JSON.stringify(post.author);
           const item = { ...post, author, media: post.media.map(child => ({ ...child, author, state: 'published', created: 1, published: 2, source_name: '', source_url: '' })) };
-          return route.fulfill({ contentType: 'text/html', body: await (await renderPage(item, assets, site)).text() });
+          const response=await renderPage(item,assets,site);
+          return route.fulfill({headers:Object.fromEntries(response.headers),body:await response.text()});
         }
         if (/^\/[iv]\//.test(url.pathname)) return route.fulfill({ contentType: 'image/png', body: picture });
         if (url.pathname === '/api') {

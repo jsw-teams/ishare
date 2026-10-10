@@ -1,4 +1,7 @@
 {
+  "dataSaverLoadFailed": "Required page resources could not load. Retry, or choose text view if available.",
+  "dataSaverRetry": "Retry loading",
+  "dataSaverProgressControls": "Page controls: {loaded} / {total} scripts completed",
   "dataSaverLoadingNotice": "Full view is loading. You can switch to text view now to skip fonts and media.",
   "dataSaverProgressStyles": "Page styles: {loaded} / {total} files completed",
   "dataSaverProgressMedia": "First-screen images: {loaded} / {total} completed",

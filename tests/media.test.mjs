@@ -56,6 +56,7 @@ test('share pages and embeds keep post text, show media errors and recover image
     const path=url.pathname.slice(1),types={'.js':'text/javascript','.css':'text/css','.png':'image/png','.webp':'image/webp','.svg':'image/svg+xml'};return route.fulfill({contentType:types[extname(path)]||'text/html',body:await readFile('dist/'+path)});
    });
    const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(site+(embedded?'/embed/':'/s/')+post.id);
+   await page.locator('.gallery-stage figure').waitFor({state:'visible'});
    assert.equal(await page.locator('.gallery-stage figure').count(),1);assert.equal(imageCalls,0);assert.equal(videoCalls,0);
    await page.locator('[data-plyr=play]').first().click();const videoFailure=page.locator('.gallery-stage .media-feedback');await videoFailure.waitFor({state:'visible'});assert.match(await videoFailure.textContent(),/no longer available|deleted/);assert.equal(videoCalls,1);
    const retryResponse=page.waitForResponse(response=>new URL(response.url()).pathname==='/v/'+video.id+'/master.m3u8');await videoFailure.getByRole('button',{name:'Retry loading'}).click();await retryResponse;await videoFailure.waitFor({state:'visible'});await page.waitForFunction(()=>document.querySelector('.gallery-stage .media-feedback button')?.disabled===false);assert.equal(videoCalls,2);assert.equal(imageCalls,0);
