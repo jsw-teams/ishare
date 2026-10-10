@@ -5,7 +5,7 @@ import { extname } from 'node:path';
 import { chromium } from 'playwright';
 import { renderPage, renderProfile } from '../backend/cloudflare/views.js';
 
-test('automatic text view keeps feed and profile stories without covers, avatars or preview engines, then loads one chosen picture', async () => {
+test('explicit text view keeps feed and profile stories without covers, avatars or preview engines, then loads one chosen picture', async () => {
   const site = 'https://ishare.js.gripe';
   const assets = { ASSETS: { fetch: async request => new Response(await readFile('dist' + new URL(request.url).pathname)) } };
   const picture = await readFile('content/assets/brand/bear-icon.3754101e8d6380da.png');
@@ -15,6 +15,7 @@ test('automatic text view keeps feed and profile stories without covers, avatars
     for (const path of ['/', '/u/42', '/s/' + post.id]) {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
       await context.addInitScript(() => Object.defineProperty(navigator, 'connection', { get: () => ({ saveData: true, effectiveType: '4g' }) }));
+      await context.addInitScript(() => localStorage.setItem('edgepress-data-mode','text'));
       const requests = [], actions = [], errors = [];
       context.on('request', request => requests.push(request.url()));
       await context.route('**/*', async route => {

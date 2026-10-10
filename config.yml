@@ -7,7 +7,7 @@ site:
     debug: false
     mode: auto
     detectSlowConnection: true
-    respectBrowserPreference: true
+    respectBrowserPreference: false
   externalLinks:
     enabled: true
     trustedOrigins:

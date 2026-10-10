@@ -1,4 +1,7 @@
 {
+  "dataSaverLoadingNotice": "正在載入完整版。你可以現在切換文字省流版，略過字型與多媒體。",
+  "dataSaverProgressStyles": "頁面樣式：已完成 {loaded} / {total} 個檔案",
+  "dataSaverProgressMedia": "首屏圖片：已完成 {loaded} / {total}",
   "serviceLoad": "載入這項服務",
   "dataSaverLoading": "正在準備頁面…",
   "dataSaverTitle": "流量使用",

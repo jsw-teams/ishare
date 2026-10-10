@@ -1,4 +1,7 @@
 {
+  "dataSaverLoadingNotice": "Full view is loading. You can switch to text view now to skip fonts and media.",
+  "dataSaverProgressStyles": "Page styles: {loaded} / {total} files completed",
+  "dataSaverProgressMedia": "First-screen images: {loaded} / {total} completed",
   "serviceLoad": "Load this service",
   "dataSaverLoading": "Preparing this page…",
   "dataSaverTitle": "Data usage",
