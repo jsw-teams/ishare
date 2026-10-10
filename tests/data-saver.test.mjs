@@ -40,6 +40,14 @@ test('automatic text view keeps feed and profile stories without covers, avatars
       await page.goto(site + path);
       await page.getByText(post.caption, { exact: true }).waitFor();
       assert.equal(await page.getAttribute('html', 'data-edgepress-data-mode'), 'text');
+      assert.equal(await page.locator('body>header').count(), 1);
+      assert.equal(await page.locator('body>footer').count(), 1);
+      assert.equal(await page.locator('main').count(), 1);
+      assert(await page.locator('body>header').isVisible());
+      assert(await page.locator('body>footer').isVisible());
+      assert.doesNotMatch(await page.locator('body').innerText(), /<img\b|<picture\b/);
+      assert.equal(await page.locator('.edgepress-data-controls').count(), 0);
+      assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       assert(!requests.some(url => /\/[iv]\/.+|woff|\/style\.|gallery-runtime\.|\/ishare\/media\./.test(url)), requests.join('\n'));
       assert(!actions.some(action => ['avatar', 'profile-avatar'].includes(action)));
       const placeholder = path.startsWith('/s/') ? page.locator('[data-edgepress-data-media][data-data-feature=gallery]') : page.locator('.post-card .edgepress-data-placeholder');

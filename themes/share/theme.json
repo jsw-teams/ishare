@@ -3,6 +3,7 @@
   "description": "Accessible media publishing pages.",
   "dataSaver": {
     "stylesheet": "data-saver-theme.css",
-    "scripts": []
+    "scripts": [],
+    "layoutStyles": ["style.css"]
   }
 }
