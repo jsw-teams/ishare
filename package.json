@@ -12,11 +12,14 @@
     "dev": "npm run build && wrangler dev",
     "deploy": "npm run build && wrangler deploy",
     "deploy:cloudflare": "npm run deploy",
-    "icons:sync": "node tools/sync-icons.mjs"
+    "icons:sync": "node tools/sync-icons.mjs",
+    "pages:format": "node tools/assets/format-pages.mjs",
+    "test:data-saver": "node --test tests/data-saver-site.test.mjs",
+    "verify:performance": "node tools/verification/page-performance.mjs"
   },
   "dependencies": {
     "@jsw-teams/media-viewer": "https://codeload.github.com/jsw-teams/media-viewer/tar.gz/158ca15",
-    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/192daffe3d0c80991b3b953d67c416cb046b8e18"
+    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/6236e8608ba5af20fbb4dcaefb4e8a2590369283"
   },
   "overrides": {
     "@file-viewer/doc": {
