@@ -1,0 +1,19 @@
+{
+  "$schema": "../../../node_modules/edgepress/schemas/pages.schema.json",
+  "title": "Account restriction appeal",
+  "lang": "en",
+  "slug": "appeal",
+  "blocks": [
+    {
+      "columns": 1,
+      "cells": [
+        [
+          {
+            "type": "text",
+            "text": "ishare"
+          }
+        ]
+      ]
+    }
+  ]
+}

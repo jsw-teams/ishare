@@ -1,0 +1,19 @@
+{
+  "$schema": "../../../node_modules/edgepress/schemas/pages.schema.json",
+  "title": "Personal center",
+  "lang": "en",
+  "slug": "profile",
+  "blocks": [
+    {
+      "columns": 1,
+      "cells": [
+        [
+          {
+            "type": "text",
+            "text": "ishare"
+          }
+        ]
+      ]
+    }
+  ]
+}
