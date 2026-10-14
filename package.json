@@ -18,8 +18,8 @@
     "verify:performance": "node tools/verification/page-performance.mjs"
   },
   "dependencies": {
-    "@jsw-teams/media-viewer": "https://codeload.github.com/jsw-teams/media-viewer/tar.gz/158ca15",
-    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/ac42e0046d022a318e4eef21e56e2e459584b2a5"
+    "@jsw-teams/media-viewer": "https://codeload.github.com/jsw-teams/media-viewer/tar.gz/158ca150b221b4da0058b61d87c8d3ca787ebf25",
+    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/0ae2b0172815fb4f31a76bc37c3d38433afcfad1"
   },
   "overrides": {
     "@file-viewer/doc": {
