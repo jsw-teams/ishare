@@ -59,7 +59,32 @@
         [
           {
             "type": "text",
-            "text": "Your post history lives on My profile; only you see deletion and homepage inclusion controls."
+            "text": "Publication immediately shows the actual embedded post. Open My profile to edit text or attachments, delete a post, or change whether it appears on the homepage. The post link stays the same after an edit."
+          }
+        ]
+      ]
+    },
+    {
+      "columns": 1,
+      "cells": [
+        [
+          {
+            "type": "text",
+            "text": "Create a named API key in Personal center for AI image/video uploads. Keys share your account permissions and quotas. API-created posts stay off the homepage; the final Markdown includes post and media links. Native WebMCP can use selected composer files and manage your own posts when your browser supports it."
+          },
+          {
+            "type": "link-list",
+            "title": "AI API / WebMCP",
+            "items": [
+              {
+                "label": "API usage",
+                "url": "https://github.com/jsw-teams/ishare/blob/main/docs/ai-upload.md"
+              },
+              {
+                "label": "Personal center",
+                "url": "/[launge]/profile/"
+              }
+            ]
           }
         ]
       ]

@@ -1,4 +1,4 @@
-import { ServiceError, fail, requestOrigin, text, number, id, digest, cookie, jsonBody, json, headers } from './security.js';
+import { ServiceError, fail, requestOrigin, text, number, id, digest, random, cookie, jsonBody, json, headers } from './security.js';
 import { authReady, readSession, requireSite, requireCsrf, authorize, callback, logout } from './auth.js';
 import { provider, resourceConfiguration } from './provider.js';
 import { publicRecord, oembed, shareId, renderPage, renderProfile } from './views.js';
@@ -9,12 +9,15 @@ import { rpcStore } from './rpc.js';
 const imageTypes=['image/jpeg','image/png','image/gif','image/webp','image/avif'];
 const videoTypes=['video/mp4','video/webm','video/quicktime','video/x-matroska'];
 const methodFor={'admin-diagnostics':'GET','discard-upload':'POST','discard-post':'POST','profile-feed':'GET','profile-avatar':'GET','profile':'GET','set-profile':'POST',avatar:'GET',feed:'GET',history:'GET','create-post':'POST','delete-post':'POST','set-visibility':'POST','admin-settings':'GET','admin-set-settings':'POST',session:'GET',get:'GET',oembed:'GET','create-upload':'POST',publish:'POST',delete:'POST',logout:'POST','admin-users':'GET','admin-user':'GET','admin-set-user':'POST','admin-list':'GET','admin-audit':'GET','admin-rights':'GET','admin-resolve-right':'POST',export:'GET',rights:'GET','request-right':'POST','erase-account':'POST'};
+Object.assign(methodFor,{'api-keys':'GET','create-api-key':'POST','revoke-api-key':'POST','owned-post':'GET','update-post':'POST'});
+const keyActions=new Set(['history','owned-post','create-upload','publish','create-post','update-post','set-visibility','delete-post','delete','discard-upload','discard-post']);
 const privateActions=new Set(Object.keys(methodFor).filter(key=>!['get','oembed','feed','profile','profile-feed','profile-avatar'].includes(key)));
-const accountActions=new Set(['request-right','export','create-post','create-upload','publish']);
+const accountActions=new Set(['request-right','export','create-post','create-upload','publish','create-api-key','update-post']);
 const settingsActions=new Set([...accountActions,'admin-settings','admin-set-settings','admin-users','admin-user','admin-set-user']);
 const ready=(env,kind)=>{try{resourceConfiguration(env,kind);return true;}catch{return false;}};
 const allowedPublisher=(env,user)=>user?.id===env.OWNER_GITHUB_ID||!env.PUBLISHER_IDS||env.PUBLISHER_IDS==='*'||env.PUBLISHER_IDS.split(',').map(s=>s.trim()).includes(user?.id);
 const admin=(env,user)=>!!user&&(user.id===env.OWNER_GITHUB_ID||env.ADMIN_IDS?.split(',').map(s=>s.trim()).includes(user.id));
+function publication(record,session,status=200){return session.apiKey?new Response(record.markdown+'\n\n[Post]('+record.shareUrl+')\n\n'+(record.media||[record]).map((item,index)=>'[Media '+(index+1)+']('+item.mediaUrl+')').join('\n\n')+'\n',{status,headers:headers({'Content-Type':'text/markdown; charset=utf-8','Cache-Control':'no-store'})}):json(record,status);}
 function resource(request){const value=request.headers.get('X-Service-Resource')||'';try{return decodeURIComponent(value);}catch{fail('invalid_resource');}}
 const width=value=>value===null?640:number(value,640,1920);
 const height=value=>value===null?480:number(value,480,1440);
@@ -59,6 +62,8 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     if(url.search)fail('invalid_query');
     const action=request.headers.get('X-Service-Action');if(!Object.hasOwn(methodFor,action||''))fail('unknown_action',404);
     if(request.method!==methodFor[action])fail('method_not_allowed',405);
+    const authorization=request.headers.get('Authorization');
+    if(authorization&&!keyActions.has(action))fail('api_scope_denied',403);
     if(privateActions.has(action))requireSite(request);
     if(action==='session'){
       const page=resource(request);if(!['','mine','profile','admin','appeal'].includes(page))fail('invalid_resource');
@@ -67,7 +72,8 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
       if(initial?.history)initial.history.items=initial.history.items.map(item=>publicRecord(item,site));
       return json({user:session?.user||null,profile:session?.profile||null,csrf:session?.csrf||null,loginAvailable:authReady(env),canPublish:!!session&&allowedPublisher(env,session.user)&&!account.blocked&&!account.sharingBlocked,isAdmin:admin(env,session?.user),account,initial,imagesAvailable:ready(env,'image'),videosAvailable:ready(env,'video'),maxVideoDuration:account?.limits.videoDuration??36000,maxVideoBytes:29_999_999_999,quotaNotice:settings.pending?{effective:settings.pending.effective,note:settings.note}:null});
     }
-    const session=privateActions.has(action)?await readSession(request,store,now):null;
+    let session=privateActions.has(action)?await readSession(request,store,now):null;
+    if(authorization){if(!/^Bearer ishare_[\w-]{43}$/.test(authorization))fail('invalid_api_key',401);session=await store.apiKeySession(await digest(authorization.slice(7)),now);if(!session)fail('invalid_api_key',401);}
     if(action==='feed'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.feed(cursor,env.OWNER_GITHUB_ID,now);return json({...data,items:data.items.map(item=>publicRecord(item,site))},200,{...cors,'Cache-Control':'public, max-age=30',Vary:'X-Service-Action, X-Service-Resource'});}
     if(action==='get'||action==='oembed'){
       const key=action==='oembed'?shareId(resource(request),site):id(resource(request));
@@ -101,22 +107,40 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
       requireCsrf(request,session);const change=changes(await jsonBody(request));await store.setAccount(target,change,session.user.id,env.OWNER_GITHUB_ID,now,base);return json(await store.account(target,base,env.OWNER_GITHUB_ID,now));
     }
     if(action==='history'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.history(session.user.id,cursor);return json({...data,items:data.items.map(item=>publicRecord(item,site))});}
+    if(action==='api-keys')return json({items:await store.apiKeys(session.user.id)});
+    if(action==='owned-post'){const post=await store.post(id(resource(request)));if(!post||post.owner!==session.user.id||post.state!=='published')fail('not_found',404);return json(publicRecord(post,site));}
     if(action==='rights')return json({items:await store.rights(session.user.id)});
     if(action==='export'){const cursor=resource(request);if(cursor)id(cursor);const data=await store.history(session.user.id,cursor,true);return json({identity:session.user,profile:session.profile,account,requests:await store.rights(session.user.id),...data,items:data.items.map(item=>publicRecord(item,site))});}
-    requireCsrf(request,session);
+    if(!session.apiKey)requireCsrf(request,session);
+    if(action==='create-api-key'){
+      if(!allowedPublisher(env,session.user)||account.blocked||account.sharingBlocked)fail('publishing_suspended',403);
+      const body=await jsonBody(request);if(Object.keys(body).some(key=>!['name','days'].includes(key))||![30,90,365].includes(body.days??90))fail('invalid_field');
+      if(session.user.id!==env.OWNER_GITHUB_ID)await store.rate('api-keys:'+session.user.id,20,now,86400);
+      const key='ishare_'+random(),data={id:crypto.randomUUID().replaceAll('-',''),owner:session.user.id,name:text(body.name,60),hash:await digest(key),prefix:key.slice(0,15),expires:now+(body.days??90)*86400};
+      return json({...await store.createApiKey({...data,ownerId:env.OWNER_GITHUB_ID},now),key},201);
+    }
+    if(action==='revoke-api-key')return json(await store.revokeApiKey(id(resource(request)),session.user.id,now));
     if(action==='set-profile'){const body=await jsonBody(request);if(Object.keys(body).some(key=>!['displayName','bio'].includes(key)))fail('invalid_field');await store.rate('profile:'+session.user.id,30,now,3600);return json(await store.setProfile(session.user.id,text(body.displayName,60),text(body.bio,500,true),now));}
     if(action==='logout')return await logout(request,store);
     if(action==='erase-account')return json(await store.erase(session.user.id,now),202);
     const body=await jsonBody(request),upstream=provider(env,requestProvider);
     if(action==='request-right'){if(body.kind==='appeal'&&(account.erasing||allowedPublisher(env,session.user)&&!account.blocked&&!account.sharingBlocked))fail('appeal_not_available',403);if(!['appeal','rectify','restrict','delete','other'].includes(body.kind))fail('invalid_request');return json(await store.requestRight(session.user.id,body.kind,text(body.message,2000),now),201);}
-    if(action==='discard-post')return json(await store.discardPost(id(resource(request)),session.user.id));
-    if(action==='delete-post'){const result=await store.deletePost(id(resource(request)),session.user.id,admin(env,session.user));context.waitUntil?.((async()=>{const items=await Promise.all(result.mediaIds.map(key=>store.get(key)));await parallelRemoval(items,store,upstream);await store.cleanup(Math.floor(Date.now()/1000));})().catch(()=>{}));return json({ok:true,pending:true},202);}
-    if(action==='set-visibility'){if(typeof body.listed!=='boolean')fail('invalid_field');return json(publicRecord(await store.visibility(id(resource(request)),session.user.id,body.listed,env.OWNER_GITHUB_ID),site));}
+    if(action==='discard-post'){const postId=id(resource(request));if(session.apiKey&&await store.post(postId))fail('media_in_use',409);return json(await store.discardPost(postId,session.user.id));}
+    if(action==='update-post'){
+      if(!allowedPublisher(env,session.user)||account.blocked||account.sharingBlocked)fail('publishing_suspended',403);
+      if(Object.keys(body).some(key=>!['caption','mediaIds','listed','revision'].includes(key))||!Array.isArray(body.mediaIds)||body.mediaIds.length>50||typeof body.listed!=='boolean'||!Number.isSafeInteger(body.revision)||body.revision<0)fail('invalid_post');
+      const result=await store.updatePost(id(resource(request)),session.user.id,{caption:text(body.caption,5000,true),mediaIds:body.mediaIds.map(id),listed:body.listed,revision:body.revision},env.OWNER_GITHUB_ID,now);
+      context.waitUntil?.((async()=>{await parallelRemoval(await Promise.all(result.removedIds.map(key=>store.get(key))),store,upstream);await store.cleanup(Math.floor(Date.now()/1000));})().catch(()=>{}));return publication(publicRecord(result.post,site),session);
+    }
+    if(action==='delete-post'){const result=await store.deletePost(id(resource(request)),session.user.id,!session.apiKey&&admin(env,session.user));context.waitUntil?.((async()=>{const items=await Promise.all(result.mediaIds.map(key=>store.get(key)));await parallelRemoval(items,store,upstream);await store.cleanup(Math.floor(Date.now()/1000));})().catch(()=>{}));return json({ok:true,pending:true},202);}
+    if(action==='set-visibility'){if(typeof body.listed!=='boolean')fail('invalid_field');return publication(publicRecord(await store.visibility(id(resource(request)),session.user.id,body.listed,env.OWNER_GITHUB_ID),site),session);}
     if(action==='create-post'){
       if(!allowedPublisher(env,session.user)||account.blocked||account.sharingBlocked)fail('publishing_suspended',403);
+      if(session.apiKey){if(body.listed===true)fail('api_visibility_restricted',403);body.listed??=false;if(!body.mediaIds?.length)fail('invalid_post');}
       if(Object.keys(body).some(key=>!['caption','mediaIds','listed'].includes(key))||!Array.isArray(body.mediaIds)||body.mediaIds.length>50||typeof body.listed!=='boolean')fail('invalid_post');
       const data={id:resource(request)?id(resource(request)):crypto.randomUUID().replaceAll('-',''),owner:session.user.id,author:session.user,caption:text(body.caption,5000,true),sourceUrl:'',sourceName:'',mediaIds:body.mediaIds.map(id),listed:body.listed};
-      if(session.user.id!==env.OWNER_GITHUB_ID)await store.rate('posts:'+session.user.id,100,now,86400);return json(publicRecord(await store.createPost(data,env.OWNER_GITHUB_ID,now),site),201);
+      if(session.user.id!==env.OWNER_GITHUB_ID)await store.rate('posts:'+session.user.id,100,now,86400);const record=publicRecord(await store.createPost(data,env.OWNER_GITHUB_ID,now),site);
+      return publication(record,session,201);
     }
     if(action==='create-upload'){
       if(!allowedPublisher(env,session.user)||account.blocked||account.sharingBlocked)fail('publishing_suspended',403);
@@ -133,15 +157,15 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
       try{const grant=await upstream.create(item,now);await store.attach(applicationId,grant.providerId,grant.uploadUrl,now);return json({id:applicationId,uploadUrl:grant.uploadUrl,protocol:grant.protocol},201);}catch(error){if(error.providerId){const allocated=await store.attach(applicationId,error.providerId,'',now);try{await removeMedia(allocated,store,upstream,session.user.id,false,now,true);}catch{/* Persist cleanup for the existing scheduled job. */}}else if(error.safeToRelease)await store.failed(applicationId);else await store.uncertain(applicationId);throw error;}
     }
     const mediaId=id(resource(request)),item=await store.get(mediaId);
-    if(!item||(item.owner!==session.user.id&&!(action==='delete'&&admin(env,session.user))))fail('not_found',404);
+    if(!item||(item.owner!==session.user.id&&!(action==='delete'&&!session.apiKey&&admin(env,session.user))))fail('not_found',404);
     if(action==='publish'){
       if(!allowedPublisher(env,session.user)||account.blocked||account.sharingBlocked)fail('publishing_suspended',403);
-      if(item.state==='published')return json(publicRecord(item,site));if(item.state!=='uploading')fail('invalid_state',409);
-      const duration=await upstream.ready(item);return json(publicRecord(await store.publish(mediaId,session.user.id,duration,now,env.OWNER_GITHUB_ID),site));
+      if(item.state==='published')return json(session.apiKey?{id:item.id,state:item.state}:publicRecord(item,site));if(item.state!=='uploading')fail('invalid_state',409);
+      const duration=await upstream.ready(item),published=await store.publish(mediaId,session.user.id,duration,now,env.OWNER_GITHUB_ID);return json(session.apiKey?{id:published.id,state:published.state}:publicRecord(published,site));
     }
-    if(action==='delete'&&item.state!=='uncertain'&&item.state!=='preparing'){const marked=await store.prepareRemoval(item.id,session.user.id,admin(env,session.user),item.provider_id?[item.provider_id]:[],false);context.waitUntil?.(finishRemoval(marked,store,upstream).then(()=>store.cleanup(Math.floor(Date.now()/1000))).catch(()=>{}));return json({ok:true,pending:true},202);}
+    if(action==='delete'&&item.state!=='uncertain'&&item.state!=='preparing'){const marked=await store.prepareRemoval(item.id,session.user.id,!session.apiKey&&admin(env,session.user),item.provider_id?[item.provider_id]:[],false);context.waitUntil?.(finishRemoval(marked,store,upstream).then(()=>store.cleanup(Math.floor(Date.now()/1000))).catch(()=>{}));return json({ok:true,pending:true},202);}
     if(action==='delete'||action==='discard-upload'){
-      await removeMedia(item,store,upstream,session.user.id,action==='delete'&&admin(env,session.user),now,action==='discard-upload');
+      await removeMedia(item,store,upstream,session.user.id,action==='delete'&&!session.apiKey&&admin(env,session.user),now,action==='discard-upload');
       return json({ok:true});
     }
     fail('unknown_action',404);

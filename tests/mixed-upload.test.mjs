@@ -9,6 +9,7 @@ import {repository,environment,login,request} from './helpers.mjs';
 for(const scenario of [{name:'image then video',order:['image','video']},{name:'video then image',order:['video','image']},{name:'browser cannot decode metadata',order:['image','video'],preview:'metadata'},{name:'video upload rejected',order:['image','video'],rejected:'video'},{name:'image rejected after video completes',order:['image','video'],rejected:'image'}])test('mixed post: '+scenario.name,async()=>{
  const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})}),{store,database}=repository(),env={...environment(store),OWNER_GITHUB_ID:'99',GITHUB_CLIENT_ID:'fixture',GITHUB_CLIENT_SECRET:'fixture'},owner=await login(store),context=await browser.newContext({locale:'zh-CN',viewport:{width:390,height:844}}),resources=new Map(),errors=[],logs=[],actions=[],methods=[];
  const image=await readFile('content/assets/brand/bear-icon.3754101e8d6380da.png'),video=await readFile('tests/fixtures/preview.webm'),jobs=[],ctx={waitUntil(job){jobs.push(job);}};
+ env.ASSETS={fetch:async req=>new Response(await readFile('dist'+new URL(req.url).pathname))};
  const provider=async(address,options={})=>{
   const url=new URL(address),method=options.method||'GET';assert.equal(url.hostname,'api.cloudflare.com');assert.equal(options.headers.Authorization,'Bearer '+env.MEDIA_API_TOKEN);
   if(method==='DELETE'){resources.delete(url.pathname.split('/').at(-1));return Response.json({success:true,result:null});}
@@ -36,6 +37,7 @@ for(const scenario of [{name:'image then video',order:['image','video']},{name:'
     if(scenario.rejected==='video')return route.fulfill({status:403,body:''});item.received=true;return route.fulfill({status:204,headers:{'Upload-Offset':String(video.length),'Access-Control-Expose-Headers':'Upload-Offset'},body:''});
    }
    assert.equal(url.origin,'https://ishare.js.gripe');
+   if(url.pathname.startsWith('/embed/')){const response=await handle(new Request(req.url(),{headers:await req.allHeaders()}),env,ctx);return route.fulfill({status:response.status,headers:Object.fromEntries(response.headers),body:await response.text()});}
    if(url.pathname==='/api'){
     assert.equal(url.search,'');const headers=await req.allHeaders(),action=headers['x-service-action'];actions.push(action);
     if(['avatar','profile-avatar'].includes(action))return route.fulfill({contentType:'image/png',body:image});

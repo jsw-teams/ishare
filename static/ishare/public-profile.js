@@ -9,6 +9,7 @@ function controls(card,item){
  const actions=document.createElement('div');actions.className='profile-post-actions';
  if(item.state==='published'){const share=document.createElement('button');share.type='button';share.textContent=t('sharePost');share.addEventListener('click',()=>openShare(item,share));actions.append(share);}
  if(item.kind==='post'&&item.state==='published'){
+  const edit=document.createElement('a');edit.className='button';edit.textContent=t('editPost');edit.href=(document.documentElement.lang==='en'?'':'/'+document.documentElement.lang)+'/mine/#edit='+item.id;actions.append(edit);
   const label=document.createElement('label'),check=document.createElement('input'),text=document.createElement('span');label.className='check';check.type='checkbox';check.checked=item.listed;text.textContent=t('listed');label.append(check,text);
   check.addEventListener('change',async()=>{check.disabled=true;try{await client.request('set-visibility',{resource:item.id,body:{listed:check.checked}});item.listed=check.checked;status.textContent=t('saved');}catch{check.checked=item.listed;status.textContent=t('error');}finally{check.disabled=false;}});actions.append(label);
  }
@@ -27,6 +28,7 @@ async function load(append=false){
 }
 async function refresh(){const session=await client.read();showAccount(session);const previous=owned;owned=String(session.user?.id)===owner;if(owned||previous!==owned)await load();}
 more.addEventListener('click',()=>void load(true));
+document.addEventListener('ishare:posts-changed',()=>void load());
 function portrait(){avatarFor(owner,document.querySelector('#public-profile-avatar'));}
 portrait();document.addEventListener('edgepress:data-media',portrait);
 bindAccount({client,refresh,notice:()=>{status.textContent=t('error');}});void load();void refresh().catch(()=>{});

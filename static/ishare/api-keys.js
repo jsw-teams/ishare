@@ -1,0 +1,15 @@
+export function apiKeyPanel({api,t,notice}){
+ const panel=document.querySelector('#api-key-panel'),form=document.querySelector('#api-key-form'),list=document.querySelector('#api-key-list'),result=document.querySelector('#api-key-result'),secret=document.querySelector('#api-key-secret'),feedback=document.querySelector('#api-key-status');
+ let session=null;
+ const date=value=>value?new Date(value*1000).toLocaleString(document.documentElement.lang):t('apiKeyNeverUsed');
+ function render(items){list.replaceChildren();if(!items.length){const p=document.createElement('p');p.textContent=t('apiKeyEmpty');list.append(p);}
+  for(const key of items){const row=document.createElement('div'),name=document.createElement('strong'),meta=document.createElement('p'),revoke=document.createElement('button');row.className='api-key-row';name.textContent=key.name;meta.textContent=key.prefix+'… · '+t('apiKeyExpires')+': '+date(key.expires)+' · '+t('apiKeyLastUsed')+': '+date(key.lastUsed);revoke.type='button';revoke.textContent=t(key.revoked?'apiKeyRevoked':key.expires*1000<=Date.now()?'apiKeyExpired':'apiKeyRevoke');revoke.disabled=!!key.revoked||key.expires*1000<=Date.now();revoke.addEventListener('click',async()=>{revoke.disabled=true;try{await api('revoke-api-key',{resource:key.id,body:{}});await refresh();feedback.textContent=t('apiKeyRevoked');}catch(error){notice(error);revoke.disabled=false;}});row.append(name,meta,revoke);list.append(row);}
+ }
+ async function refresh(){render((await api('api-keys')).items);}
+ document.addEventListener('ishare:keys-changed',()=>void refresh().catch(notice));
+ form.addEventListener('submit',async event=>{event.preventDefault();const owner=session?.user?.id,button=form.querySelector('button');button.disabled=true;secret.value='';result.hidden=true;try{const created=await api('create-api-key',{body:{name:form.elements.name.value,days:Number(form.elements.days.value)}});if(session?.user?.id!==owner)return;secret.value=created.key;result.hidden=false;form.elements.name.value='';await refresh();if(session?.user?.id!==owner)return;secret.focus();secret.select();feedback.textContent=t('apiKeyCreated');document.dispatchEvent(new CustomEvent('ishare:key-result',{detail:{ok:true,key:created}}));}catch(error){notice(error);document.dispatchEvent(new CustomEvent('ishare:key-result',{detail:{ok:false,error:error.message}}));}finally{button.disabled=!session?.canPublish;}});
+ document.querySelector('#api-key-copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(secret.value);feedback.textContent=t('copied');}catch{secret.focus();secret.select();feedback.textContent=t('copyManually');}});
+ document.querySelector('#api-key-hide').addEventListener('click',()=>{secret.value='';result.hidden=true;});
+ window.addEventListener('pagehide',()=>{secret.value='';},{once:true});
+ return {update(value){session=value;panel.hidden=!session.user;form.querySelectorAll('input,select,button').forEach(node=>node.disabled=!session.canPublish);if(!session.user){secret.value='';result.hidden=true;list.replaceChildren();}else render(session.initial?.apiKeys?.items||[]);}};
+}

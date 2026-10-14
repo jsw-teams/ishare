@@ -73,7 +73,8 @@
                 "type": "text",
                 "paragraphs": [
                   "Secure HttpOnly session cookies last at most one day and expire on logout. One-use OAuth state lasts ten minutes. Short-term rate limits use hashed records; raw IP addresses are not stored as public media information.",
-                  "Known unfinished uploads are generally cleaned up after one day; uncertain upstream outcomes need review. Daily-quota deletion records last at most thirty days without media bytes. Identifiable administration and answered privacy-request records expire after ninety days, earlier on completed account erasure."
+                  "Known unfinished uploads are generally cleaned up after one day; uncertain upstream outcomes need review. Daily-quota deletion records last at most thirty days without media bytes. Identifiable administration and answered privacy-request records expire after ninety days, earlier on completed account erasure.",
+                  "When you create an API key, we store its hash, name, prefix, owner, expiry and last-use time. The usable key is displayed once and is not stored. Revocation or expiry disables it immediately; its metadata is removed within ninety days afterward. Starting account erasure revokes all keys. Native WebMCP actions use your existing signed-in account and ownership checks."
                 ]
               }
             ]

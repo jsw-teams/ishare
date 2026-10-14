@@ -59,7 +59,32 @@
         [
           {
             "type": "text",
-            "text": "历史统一放在“我的主页”，删除与首页展示开关只对本人可见。"
+            "text": "发布完成后会直接显示真实的帖子嵌入预览。在个人主页可以编辑说明和附件、删除帖子，以及切换是否在首页展示。编辑后原帖子链接保持不变。"
+          }
+        ]
+      ]
+    },
+    {
+      "columns": 1,
+      "cells": [
+        [
+          {
+            "type": "text",
+            "text": "在个人中心创建带名称的 API 密钥，让 AI 上传图片和视频，沿用账户权限和额度。API 新建帖子不进入首页，最终 Markdown 包含帖子和媒体链接。支持原生 WebMCP 的浏览器还可以使用已选择的附件发布并管理自己的帖子。"
+          },
+          {
+            "type": "link-list",
+            "title": "AI API / WebMCP",
+            "items": [
+              {
+                "label": "API 使用说明",
+                "url": "https://github.com/jsw-teams/ishare/blob/main/docs/ai-upload.md"
+              },
+              {
+                "label": "个人中心",
+                "url": "/[launge]/profile/"
+              }
+            ]
           }
         ]
       ]

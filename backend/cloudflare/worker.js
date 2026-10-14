@@ -8,9 +8,15 @@ import {parallelRemoval,removeMedia} from './removal.js';
 export class ShareStore extends DurableObject {
   constructor(ctx,env){super(ctx,env);this.repository=new Repository(ctx.storage.sql,fn=>ctx.storage.transactionSync(fn));ctx.blockConcurrencyWhile(()=>this.scheduleCleanup());}
   async scheduleCleanup(){const due=this.repository.nextCleanup(Math.floor(Date.now()/1000)),current=await this.ctx.storage.getAlarm();if(due===null){if(current!==null)await this.ctx.storage.deleteAlarm();}else if(current===null||due*1000<current)await this.ctx.storage.setAlarm(Math.max(Date.now()+1000,due*1000));}
-  async invoke(method,args){try{const result=this.repository[method](...args);if(['reserve','attach','uncertain','prepareRemoval','deleted','failed','publish','deletePost','erase','cleanup','makeSession','beginAuth','consumeAuth','logout','rate','delivery','setAccount','setQuotaSettings','resolveRight','discardPost'].includes(method))await this.scheduleCleanup();return result;}catch(error){if(error instanceof ServiceError)return {__ishareError:error.message,status:error.status};throw error;}}
+  async invoke(method,args){try{const result=this.repository[method](...args);if(['reserve','attach','uncertain','prepareRemoval','deleted','failed','publish','deletePost','updatePost','createApiKey','revokeApiKey','erase','cleanup','makeSession','beginAuth','consumeAuth','logout','rate','delivery','setAccount','setQuotaSettings','resolveRight','discardPost'].includes(method))await this.scheduleCleanup();return result;}catch(error){if(error instanceof ServiceError)return {__ishareError:error.message,status:error.status};throw error;}}
   async alarm(){const store=this.repository,upstream=provider(this.env),now=Math.floor(Date.now()/1000);await parallelRemoval(store.cleanup(now),store,upstream);for(const item of store.pendingCleanup(now)){try{await removeMedia(item,store,upstream,item.owner,true,now,true);}catch{/* Unknown allocation is discovered by its exact application metadata. */}}store.cleanup(Math.floor(Date.now()/1000));await this.scheduleCleanup();}
   profile(...args){return this.invoke('profile',args);}
+  post(...args){return this.invoke('post',args);}
+  updatePost(...args){return this.invoke('updatePost',args);}
+  apiKeys(...args){return this.invoke('apiKeys',args);}
+  createApiKey(...args){return this.invoke('createApiKey',args);}
+  revokeApiKey(...args){return this.invoke('revokeApiKey',args);}
+  apiKeySession(...args){return this.invoke('apiKeySession',args);}
   setProfile(...args){return this.invoke('setProfile',args);}
   get(id){return this.invoke('get',[id]);}
   quotaSettings(...args){return this.invoke('quotaSettings',args);}

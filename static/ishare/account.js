@@ -1,4 +1,5 @@
 import {messages} from './i18n.js';
+import {syncWebMCP} from './webmcp.js';
 export function serviceClient(page=''){
  let session=null;const pending=new Map();
  async function transport(action,{resource,body,signal}={}){
@@ -19,6 +20,7 @@ export function avatarFor(id,image){
  void publicAvatars.get(id).then(url=>{if(image.isConnected)image.src=url;}).catch(()=>publicAvatars.delete(id));
 }
 export function showAccount(session){
+ syncWebMCP(session,serviceClient());
  const menu=document.querySelector('#account-menu');if(!menu)return;
  const personal=document.querySelector('#personal-page-link');if(personal&&session.user)personal.href='/u/'+session.user.id;const identity=document.querySelector('#identity'),admin=document.querySelector('#admin-link');menu.hidden=!session.user;admin.hidden=!session.isAdmin;identity.setAttribute('aria-label',messages(document.documentElement.lang).accountMenu);
  if(!session.user){menu.open=false;document.querySelector('#menu-name').textContent='';}
