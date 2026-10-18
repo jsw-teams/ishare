@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@jsw-teams/media-viewer": "https://codeload.github.com/jsw-teams/media-viewer/tar.gz/12eb8983c2df1eabb3aaece44b232c56b4a9e1fe",
-    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/4607a74b79ec731e617a79b56c3ac86e7fc049e2"
+    "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/e2fa8593625c6ee1869103b7e52ebca9d838c61b"
   },
   "overrides": {
     "@file-viewer/doc": {

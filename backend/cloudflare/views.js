@@ -63,7 +63,7 @@ export async function renderProfile(profile,env,site,preferred='en'){
  const locale=localeFor(preferred);
  const shell=await env.ASSETS.fetch(new Request(site+'/profile-shell-'+locale+'.html'));if(!shell.ok)fail('assets_unavailable',503);
  const values={PROFILE_NAME_TOKEN:profile.displayName,PROFILE_BIO_TOKEN:profile.bio,PROFILE_ID_TOKEN:profile.id};
- const body=(await shell.text()).replace(/PROFILE_(NAME|BIO|ID)_TOKEN/g,key=>escape(values[key])).replace(/https:\/\/[^"<>]+\/profile-shell-[a-zA-Z-]+\.html/g,site+'/u/'+profile.id).replace(/<select id="site-language"[\s\S]*?<\/select>/,'');
+ const body=(await shell.text()).replace(/PROFILE_(NAME|BIO|ID)_TOKEN/g,key=>escape(values[key])).replace(/https:\/\/[^"<>]+\/profile-shell-[a-zA-Z-]+\.html/g,site+'/u/'+profile.id).replace(/<select id="site-language"[\s\S]*?<\/select>/,'').replace(/<link rel="alternate" type="application\/rss\+xml"[^>]*>/,'<link rel="alternate" type="application/rss+xml" href="'+site+'/u/'+profile.id+'/rss.xml" title="'+escape(profile.displayName)+' RSS">');
  const assetResponse=await env.ASSETS.fetch(new Request(site+'/assets.json'));if(!assetResponse.ok)fail('assets_unavailable',503);
  const inline=inlineSources(await assetResponse.json());
  return new Response(body,{headers:headers({'Content-Type':'text/html; charset=utf-8','Cache-Control':'public, max-age=30',Vary:'Accept-Language','Content-Security-Policy':`default-src 'self'; img-src 'self' blob:; style-src 'self'${inline.style}; script-src 'self'${inline.script}; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`})});

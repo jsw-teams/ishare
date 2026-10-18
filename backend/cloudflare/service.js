@@ -2,6 +2,7 @@ import { ServiceError, fail, requestOrigin, text, number, id, digest, random, co
 import { authReady, readSession, requireSite, requireCsrf, authorize, callback, logout } from './auth.js';
 import { provider, resourceConfiguration } from './provider.js';
 import { publicRecord, oembed, shareId, renderPage, renderProfile } from './views.js';
+import { renderRss } from './rss.js';
 import { deliver } from './delivery.js';
 import {removeMedia,finishRemoval,parallelRemoval} from './removal.js';
 import { changes, accountId, exceeds, settingsChange } from './quotas.js';
@@ -40,6 +41,22 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
         return await authorize(request,env,store,now);
       }
       return await callback(request,env,store,now,requestGithub);
+    }
+    // Runtime RSS reflects current ShareStore visibility, not build-time XML.
+    // Author feeds follow public profile visibility (including unlisted posts),
+    // whereas the global feed contains homepage opt-ins only.
+    const authorRss=url.pathname.match(/^\/u\/([1-9][0-9]{0,19})\/rss\.xml$/);
+    if(url.pathname==='/rss.xml'||authorRss){
+      if(!['GET','HEAD'].includes(request.method))fail('method_not_allowed',405);
+      if(url.search)fail('invalid_query');
+      const owner=authorRss?await store.profile(accountId(authorRss[1])):null;
+      const data=await store.feed('',env.OWNER_GITHUB_ID,now,owner?.id||'');
+      const content=renderRss(data.items.map(item=>publicRecord(item,site)),site,{owner});
+      return new Response(request.method==='HEAD'?null:content,{headers:headers({
+        'Content-Type':'application/rss+xml; charset=utf-8',
+        'Cache-Control':'no-store',
+        'Access-Control-Allow-Origin':'*'
+      })});
     }
     const person=url.pathname.match(/^\/u\/([1-9][0-9]{0,19})\/?$/);
     if(person){if(!['GET','HEAD'].includes(request.method))fail('method_not_allowed',405);if(url.search)fail('invalid_query');return await renderProfile(await store.profile(accountId(person[1])),env,site,request.headers.get('Accept-Language'));}

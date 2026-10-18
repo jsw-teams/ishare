@@ -34,6 +34,12 @@ site:
         en: My shares
         zh-TW: 我的分享
   footerNavigation:
+    - key: rss
+      url: /rss.xml
+      labels:
+        en: RSS feed
+        zh-TW: RSS 訂閱
+        zh-CN: RSS 订阅
     - key: main
       url: https://js.gripe
       labels:
