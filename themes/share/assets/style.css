@@ -75,3 +75,9 @@ dialog.upload-status{width:min(540px,calc(100vw - 32px));max-height:85vh;overflo
 :root .image-lightbox-status{font-family:var(--edgepress-font-sans)}
 
 .post-embed-preview iframe{display:block;width:100%;height:clamp(300px,50svh,460px);border:1px solid var(--line);border-radius:12px;background:var(--surface)}.api-key-panel{margin-top:1.5rem}.api-key-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.5rem 1rem;padding:1rem 0;border-top:1px solid var(--line);overflow-wrap:anywhere}.api-key-row p{grid-column:1;min-width:0;font-size:.85rem;color:var(--muted)}.api-key-row button{grid-column:2;grid-row:1/3;align-self:center}#api-key-secret{font-family:var(--edgepress-font-mono);width:100%}@media(max-width:540px){.api-key-row{grid-template-columns:1fr}.api-key-row button{grid-column:1;grid-row:auto;justify-self:start}}
+
+/* Public RSS entry points remain visible in all languages and viewports. */
+.rss-nav-link{white-space:nowrap;font-weight:650!important;color:var(--accent)!important}
+.rss-feed-action{flex-shrink:0;white-space:nowrap}
+.profile-post-header{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin:1rem 0}
+.profile-post-header h2{margin:0}

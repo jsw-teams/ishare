@@ -16,6 +16,10 @@
     "run_worker_first": [
       "/api",
       "/rss.xml",
+      "/feed.xml",
+      "/en/rss.xml",
+      "/zh-CN/rss.xml",
+      "/zh-TW/rss.xml",
       "/u/*",
       "/auth",
       "/auth/callback",

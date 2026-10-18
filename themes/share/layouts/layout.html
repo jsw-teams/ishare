@@ -3,7 +3,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="{{page.description}}"><title>{{page.title}}</title>
   <link rel="canonical" href="{{page.canonical}}"><link rel="stylesheet" href="{{site.stylesheet}}">
-  <link rel="alternate" type="application/rss+xml" href="{{site.feedPath}}" title="ishare RSS">
+  <link rel="alternate" type="application/rss+xml" href="/rss.xml" title="ishare RSS">
   <link rel="icon" type="image/png" sizes="32x32" href="/brand/bear-favicon.52039e84b2f38015.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/brand/bear-icon.3754101e8d6380da.png">
   <meta name="theme-color" content="#1f4938">
@@ -15,7 +15,7 @@
   <a class="skip" href="#main">{{site.skipToContent}}</a>
   <header class="topbar">
     <a class="brand" href="/" aria-label="ishare"><img class="brand-wordmark" src="/brand/wordmark-en.ae1755f42d13a86f.webp" alt="ishare" width="154" height="49"></a>
-    <nav aria-label="{{site.mainNavigationLabel}}">{{{site.primaryNavigationHtml}}}</nav>
+    <nav aria-label="{{site.mainNavigationLabel}}">{{{site.primaryNavigationHtml}}}<a class="rss-nav-link" href="/rss.xml" type="application/rss+xml" data-i18n="subscribeRss">RSS</a></nav>
     <div class="actions">{{{site.localeLinksHtml}}}<div class="account-controls"><details id="account-menu" class="account-menu" hidden><summary id="identity" aria-label="Account menu"><span class="account-avatar-slot"></span><span class="account-label"></span><span class="account-chevron" aria-hidden="true">ISHARE_ICON_CHEVRON</span></summary><div class="account-dropdown"><div class="account-menu-heading"><strong id="menu-name"></strong></div><a id="personal-page-link" href="/" data-i18n="personalPage">My profile</a><a id="profile-link" href="/profile/" data-i18n="personalCenter">Personal center</a><a id="admin-link" href="/admin/" hidden data-i18n="adminPage">Administration</a><button id="logout" type="button" data-i18n="logout">Sign out</button></div></details></div></div>
   </header>
   <main id="main">{{{page.content}}}</main>

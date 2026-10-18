@@ -55,6 +55,16 @@ test('live RSS distinguishes multiple authors, with safe content and no private 
     assert.equal(await (await response(env, '/rss.xml', {method:'HEAD'})).text(), '');
     assert.equal((await response(env, '/rss.xml', {method:'POST'})).status, 405);
     assert.equal((await response(env, '/rss.xml?from=42')).status, 400);
+    // Old and locale-prefixed subscriptions must never become static 404s.
+    for(const alias of ['/feed.xml','/zh-CN/rss.xml','/zh-TW/rss.xml','/en/rss.xml']){
+      const redirect=await response(env,alias,{redirect:'manual'});
+      assert.equal(redirect.status,308,alias);
+      assert.equal(redirect.headers.get('Location'),site+'/rss.xml');
+      assert.equal(redirect.headers.get('Cache-Control'),'no-store');
+      assert.equal((await response(env,alias,{method:'HEAD'})).status,308);
+    }
+    assert.equal((await response(env,'/zh-CN/rss.xml?x=1')).status,400);
+    assert.equal((await response(env,'/feed.xml',{method:'POST'})).status,405);
     assert.equal((await response(env, '/u/0/rss.xml')).status, 404);
     assert.equal((await response(env, '/u/404/rss.xml')).status, 404);
 
@@ -80,6 +90,9 @@ test('live RSS distinguishes multiple authors, with safe content and no private 
 
     const wrangler = JSON.parse(await readFile('wrangler.jsonc', 'utf8'));
     assert.ok(wrangler.assets.run_worker_first.includes('/rss.xml'), 'dynamic XML must take precedence over EdgePress static XML');
+    for(const url of ['/feed.xml','/zh-CN/rss.xml','/zh-TW/rss.xml','/en/rss.xml']){
+      assert.ok(wrangler.assets.run_worker_first.includes(url),url+' must reach Worker before static 404');
+    }
   } finally {
     database.close();
   }

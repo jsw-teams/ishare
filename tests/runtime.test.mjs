@@ -11,7 +11,16 @@ test('real Cloudflare runtime initializes SQLite and RPC while static assets byp
   try{
     assert.equal(config.triggers,undefined);const columns=await(await mf.dispatchFetch('https://ishare.js.gripe/fixture/schema')).json();assert.ok(columns.includes('caption'));assert.equal(columns.includes('title'),false);const cleanupResponse=await mf.dispatchFetch('https://ishare.js.gripe/fixture/alarms'),cleanupText=await cleanupResponse.text();assert.equal(cleanupResponse.status,200,cleanupText);const cleanup=JSON.parse(cleanupText);assert.ok(cleanup.pending>Date.now());assert.equal(cleanup.empty,null);assert.equal(cleanup.finished,null);assert.equal(cleanup.state,'deleted');
     const coversResponse=await mf.dispatchFetch('https://ishare.js.gripe/fixture/covers');assert.equal(coversResponse.status,200,await coversResponse.clone().text());assert.deepEqual(await coversResponse.json(),{bytes:[255,216,255,217],mime:'image/jpeg',removed:null});
-    const root=await mf.dispatchFetch('https://ishare.js.gripe/');assert.equal(root.status,200);assert.match(await root.text(),/id="feed"/);const mine=await mf.dispatchFetch('https://ishare.js.gripe/mine/');assert.equal(mine.status,200);const mineHtml=await mine.text();assert.match(mineHtml,/id="publish-form"/);assert.doesNotMatch(mineHtml,/id="admin"/);const admin=await mf.dispatchFetch('https://ishare.js.gripe/admin/');assert.equal(admin.status,200);assert.match(await admin.text(),/id="admin-gate"/);
+    const root=await mf.dispatchFetch('https://ishare.js.gripe/');assert.equal(root.status,200);
+    const rootHtml=await root.text();assert.match(rootHtml,/id="feed"/);
+    assert.match(rootHtml,/<a[^>]*href="\/rss\.xml"[^>]*>RSS feed<\/a>/);
+    assert.match(rootHtml,/rel="alternate" type="application\/rss\+xml" href="\/rss\.xml"/);
+    const realRss=await mf.dispatchFetch('https://ishare.js.gripe/rss.xml');
+    const realXml=await realRss.text();assert.equal(realRss.status,200,realXml);
+    assert.match(realRss.headers.get('content-type'),/application\/rss\+xml/);
+    assert.match(realXml,/<rss version="2\.0"/);
+    const alias=await mf.dispatchFetch('https://ishare.js.gripe/zh-CN/rss.xml',{redirect:'manual'});
+    assert.equal(alias.status,308);assert.equal(alias.headers.get('location'),'https://ishare.js.gripe/rss.xml');const mine=await mf.dispatchFetch('https://ishare.js.gripe/mine/');assert.equal(mine.status,200);const mineHtml=await mine.text();assert.match(mineHtml,/id="publish-form"/);assert.doesNotMatch(mineHtml,/id="admin"/);const admin=await mf.dispatchFetch('https://ishare.js.gripe/admin/');assert.equal(admin.status,200);assert.match(await admin.text(),/id="admin-gate"/);
     const manifest=await(await mf.dispatchFetch('https://ishare.js.gripe/assets.json')).json();const asset=await mf.dispatchFetch('https://ishare.js.gripe'+manifest.app);assert.match(asset.headers.get('cache-control'),/31536000.*immutable/);
     const api=await mf.dispatchFetch('https://ishare.js.gripe/api',{headers:{'X-Service-Action':'session',Cookie:'__Host-ishare-session='+'a'.repeat(43)}});assert.equal(api.status,200);assert.equal((await api.json()).user,null);
     const auth=await mf.dispatchFetch('https://ishare.js.gripe/auth',{redirect:'manual'});assert.equal(auth.status,503);assert.equal((await auth.json()).error,'login_unavailable');

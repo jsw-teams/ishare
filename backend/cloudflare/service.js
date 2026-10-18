@@ -45,6 +45,13 @@ export async function handle(request,env,context,{requestProvider=fetch,requestG
     // Runtime RSS reflects current ShareStore visibility, not build-time XML.
     // Author feeds follow public profile visibility (including unlisted posts),
     // whereas the global feed contains homepage opt-ins only.
+    // Public feeds share one canonical endpoint. Old Atom-style links and
+    // localized discovery URLs redirect to the live Worker-backed RSS.
+    if(['/feed.xml','/zh-CN/rss.xml','/zh-TW/rss.xml','/en/rss.xml'].includes(url.pathname)){
+      if(!['GET','HEAD'].includes(request.method))fail('method_not_allowed',405);
+      if(url.search)fail('invalid_query');
+      return new Response(null,{status:308,headers:headers({Location:site+'/rss.xml','Cache-Control':'no-store'})});
+    }
     const authorRss=url.pathname.match(/^\/u\/([1-9][0-9]{0,19})\/rss\.xml$/);
     if(url.pathname==='/rss.xml'||authorRss){
       if(!['GET','HEAD'].includes(request.method))fail('method_not_allowed',405);
