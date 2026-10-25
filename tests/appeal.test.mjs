@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {extname} from 'node:path';
 import {chromium} from 'playwright';
-import {authorize,callback} from '../backend/cloudflare/auth.js';
-import {handle} from '../backend/cloudflare/service.js';
+import {authorize,callback} from '../backend/ishare/auth.js';
+import {handle} from '../backend/ishare/service.js';
 import {repository,environment,login,request,now} from './helpers.mjs';
 
 test('restricted sign-ins go to a dedicated appeal page while unrestricted users cannot create appeals',async()=>{

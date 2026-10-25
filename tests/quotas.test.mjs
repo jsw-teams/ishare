@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {repository,environment,media,limits,login,request,now} from './helpers.mjs';
-import {defaults,changes} from '../backend/cloudflare/quotas.js';
-import {handle} from '../backend/cloudflare/service.js';
+import {defaults,changes} from '../backend/ishare/quotas.js';
+import {handle} from '../backend/ishare/service.js';
 const base=defaults(),ctx={waitUntil:()=>{}};
 
 test('the verified operator bypasses every application quota and remains protected from administrators',()=>{

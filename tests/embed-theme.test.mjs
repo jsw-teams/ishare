@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {extname} from 'node:path';
 import {chromium} from 'playwright';
-import {renderPage} from '../backend/cloudflare/views.js';
+import {renderPage} from '../backend/ishare/views.js';
 
 test('embedded galleries follow host colors, resize to natural content and ignore unrelated senders',async()=>{
  const site='https://ishare.js.gripe',host='https://article.example',assets={ASSETS:{fetch:async request=>new Response(await readFile('dist'+new URL(request.url).pathname))}},base={id:'a'.repeat(32),kind:'image',title:'Picture',caption:'',author:JSON.stringify({id:'42',name:'Bear',login:'bear'}),source_name:'',source_url:'',created:1,published:2,state:'published'},post={...base,id:'b'.repeat(32),kind:'post',caption:'A story with its pictures. '.repeat(12),media:[base,{...base,id:'c'.repeat(32)}]};

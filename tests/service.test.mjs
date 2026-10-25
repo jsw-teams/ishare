@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {handle} from '../backend/cloudflare/service.js';
-import {authorize} from '../backend/cloudflare/auth.js';
+import {handle} from '../backend/ishare/service.js';
+import {authorize} from '../backend/ishare/auth.js';
 import {repository,environment,media,limits,login,request,now} from './helpers.mjs';
 const ctx={waitUntil:()=>{}};
 

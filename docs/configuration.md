@@ -15,7 +15,7 @@
 | Deploy command | `npx wrangler deploy` |
 | Node version | `24`，可在构建环境设置 `NODE_VERSION` |
 
-依赖使用项目中的 `package-lock.json` 安装；页面构建使用 EdgePress，生成结果写入 `dist/`。部署入口是 `/backend/cloudflare/worker.js`。不需要新建另一个 Worker；SQLite Durable Object 的绑定和迁移已经在 Wrangler 配置中。
+依赖使用项目中的 `package-lock.json` 安装；页面构建使用 EdgePress，生成结果写入 `dist/`。部署入口是 `/./backend/ishare/adapters/cloudflare/worker.js`。不需要新建另一个 Worker；SQLite Durable Object 的绑定和迁移已经在 Wrangler 配置中。
 
 域名路由由你配置为 `ishare.js.gripe`，指向现有 ishare Worker。`workers.dev` 和预览域名保持关闭。构建变量与运行时 Secret 是不同配置位置，见 [Cloudflare 构建设置](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)。
 

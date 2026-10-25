@@ -42,7 +42,7 @@
 
 ## 部署与资源接入
 
-使用 Node 24，执行 `npm ci`、`npm run build`、`npm test`、`npm run deploy`。后端代码位于 `/backend/cloudflare`。Worker 保存配置并通过一个 SQLite Durable Object 保存业务资料；Images 和 Stream 通过 **API Token** 接入，共用一个资源 Cloudflare 账户。没有 Images/Stream 的 Worker binding。
+使用 Node 24，执行 `npm ci`、`npm run build`、`npm test`。实际部署工程在 web/api.js.gripe 中，运行 `npm ci` 和 `npm run build:ishare` 仅做本地打包。后端代码位于 `/./backend/ishare/adapters/cloudflare`。Worker 保存配置并通过一个 SQLite Durable Object 保存业务资料；Images 和 Stream 通过 **API Token** 接入，共用一个资源 Cloudflare 账户。没有 Images/Stream 的 Worker binding。
 
 在 Worker 的运行时配置中添加一份 `STREAM_ACCOUNT_ID`（可用普通 Variable 或 Secret），以及共用的 `MEDIA_API_TOKEN` Secret（对实际资源账户授权 Images Edit 和 Stream Edit）。删除旧 `IMAGES_ACCOUNT_ID` 和 `STREAM_CUSTOMER_CODE`，不再兼容读取旧名称；播放器地址由 Stream API 获取。后端自动配置 640、1280、2048 像素范围的私有签名图片变体，按显示尺寸和浏览器格式能力代理加载。点击图片打开查看器或保存时才请求原图。视频在服务端缓存 API 取得的签名播放地址和令牌，无需手填签名密钥。
 
@@ -91,7 +91,7 @@ blocks:
 
 ## 前端与部署来源
 
-源码在 `web/ishare.js.gripe` 维护，完整部署目录直接同步到 `jsw-teams/ishare` 仓库。前端采用 EdgePress，后端位于 `/backend/cloudflare`。实际 Worker 从私有 `jsw-teams/web` 仓库构建，根目录填写 `ishare.js.gripe`，运行 `npm ci` 与 `npm run deploy`。公开 ishare 仓库仅分发完整源码，不作为本站 Worker 的部署源；不再跨仓库下载页面，也不发布公开前端构建资源。敏感环境只填写 Worker Secrets。
+源码在 `web/ishare.js.gripe` 维护，前端与集中 ishare 后端由 tools/publish-source.mjs 白名单导出到 `jsw-teams/ishare` 仓库。前端采用 EdgePress，后端位于 `/./backend/ishare/adapters/cloudflare`。实际 Worker 从私有 `jsw-teams/web` 仓库构建，根目录填写 `api.js.gripe`，运行 `npm ci` 与 `npm run build:ishare`（仅 dry-run）。公开 ishare 仓库仅分发完整源码，不作为本站 Worker 的部署源；不再跨仓库下载页面，也不发布公开前端构建资源。敏感环境只填写 Worker Secrets。
 
 逐项配置请参考 [configuration.md](configuration.md)。EdgePress 通过固定版本依赖引用，不在公开 ishare 仓库重复发布生成器源码。
 

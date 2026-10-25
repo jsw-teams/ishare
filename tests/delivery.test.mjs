@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {rewriteManifest,openResource,deliver,upstreamUrl,sealResource} from '../backend/cloudflare/delivery.js';
-import {b64,random} from '../backend/cloudflare/security.js';
+import {rewriteManifest,openResource,deliver,upstreamUrl,sealResource} from '../backend/ishare/delivery.js';
+import {b64,random} from '../backend/ishare/security.js';
 import {environment,repository,media,limits,now} from './helpers.mjs';
-import {videoAddress} from '../backend/cloudflare/provider.js';
+import {videoAddress} from '../backend/ishare/provider.js';
 const env=environment({}),item={id:'a'.repeat(32),kind:'video',provider_id:'provider-id-123456789012345'};
 const token='header.'+b64(new TextEncoder().encode(JSON.stringify({sub:item.provider_id})))+'.signature';
 const base='https://customer-testcustomer.cloudflarestream.com/'+token+'/manifest/video.m3u8';

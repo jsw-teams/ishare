@@ -63,7 +63,7 @@ flowchart LR
 
 The JS.GRIPE operator deploys the existing Worker from the private `jsw-teams/web` repository, root `/ishare.js.gripe`. This public repository distributes complete ishare application source; EdgePress is a pinned dependency, without a copied framework source tree. See the [configuration guide](docs/configuration.md) for Git build settings and runtime Secrets.
 
-Use Node 24, run `npm ci`, `npm run build`, `npm test`, then `npm run deploy`. The Cloudflare backend lives in `backend/cloudflare`. One Worker and one SQLite Durable Object hold application metadata; Images and Stream are accessed using API tokens, not resource bindings. Images and Stream use one resource account for this deployment.
+Use Node 24, run `npm ci`, `npm run build` and `npm test`. Actual operator backend sources are centralized under `web/api.js.gripe/backend/ishare`, with `adapters/cloudflare/worker.js` as the native entry. The public source export includes the same backend under `backend/ishare` and a standalone sample `wrangler.jsonc`. Images and Stream use server-side API tokens; one SQLite Durable Object retains application metadata.
 
 Configure runtime `STREAM_ACCOUNT_ID` (Variable or Secret) for both Images and Stream, and one `MEDIA_API_TOKEN` with Images Edit and Stream Edit on that resource account. Remove obsolete `IMAGES_ACCOUNT_ID`, `STREAM_CUSTOMER_CODE` and manually configured signing keys. Stream playback addresses and tokens are discovered using its authenticated API and cached on the server. The backend configures private signed image variants (640, 1280 and 2048 pixel bounds), selects the display size and format, and proxies delivery. Original bytes load only when the image viewer is opened or saved. No general platform binding is needed.
 
@@ -105,7 +105,7 @@ Hashed CSS, JavaScript and bundled HLS dependencies cache for one year. Public m
 
 ## Source and deployment
 
-The canonical application directory is `web/ishare.js.gripe`. The `jsw-teams/ishare` repository receives the complete deployable source from that directory, including EdgePress pages and `/backend/cloudflare`. The operator Worker builds from the private `jsw-teams/web` repository with root directory `ishare.js.gripe`, running `npm ci` and `npm run deploy`. The public ishare repository distributes the same complete source; it is not the operator Worker deployment source. No cross-repository frontend download or public release artifact is required. Configure actual credentials only as Worker Secrets.
+Frontend sources remain in `web/ishare.js.gripe`; backend sources and actual deployment configuration are in `web/api.js.gripe`. The operator build root is `api.js.gripe`: run `npm ci` and `npm run build:ishare` for a dry-run bundle. The public ishare repository receives a whitelisted standalone source export with the native backend and shared ingress. It is not the operator's production deployment source. No live upload or domain change is part of source synchronization; keep credentials only in Worker Secrets.
 
 Configure the operator deployment using the [Chinese configuration guide](docs/configuration.md). EdgePress is a pinned dependency; its framework source is not copied into this project.
 

@@ -1,9 +1,10 @@
 import { DurableObject } from 'cloudflare:workers';
-import { Repository } from './store.js';
-import { handle } from './service.js';
-import { provider } from './provider.js';
-import { ServiceError } from './security.js';
-import {parallelRemoval,removeMedia} from './removal.js';
+import { Repository } from '../../store.js';
+import { handle } from '../../service.js';
+import { provider } from '../../provider.js';
+import { ServiceError } from '../../security.js';
+import {parallelRemoval,removeMedia} from '../../removal.js';
+import {createBusinessIngress} from '../../../shared/ingress.js';
 
 export class ShareStore extends DurableObject {
   constructor(ctx,env){super(ctx,env);this.repository=new Repository(ctx.storage.sql,fn=>ctx.storage.transactionSync(fn));ctx.blockConcurrencyWhile(()=>this.scheduleCleanup());}
@@ -63,6 +64,6 @@ export class ShareStore extends DurableObject {
   deleted(...args){return this.invoke('deleted',args);}
   cleanup(...args){return this.invoke('cleanup',args);}
 }
-export default {
-  fetch(request,env,ctx){return handle(request,env,ctx);},
-};
+export default {fetch:createBusinessIngress('ishare',handle,{
+  platform:'cloudflare',maxBodyBytes:32768,maxConcurrentRequests:64,maxResponseBytes:268435456,
+})};

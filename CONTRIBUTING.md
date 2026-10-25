@@ -23,7 +23,7 @@ On Linux use `npx playwright install --with-deps chromium` if browser libraries 
 
 ## Find your way around
 
-`backend/cloudflare/`: service/storage; `static/ishare/`: browser UI; `plugins/application/`: UI fragments; `content/`: EdgePress pages; `tests/`: browser and SQLite/RPC fixtures.
+`./backend/ishare/adapters/cloudflare/`: service/storage; `static/ishare/`: browser UI; `plugins/application/`: UI fragments; `content/`: EdgePress pages; `tests/`: browser and SQLite/RPC fixtures.
 
 This is a complete public source distribution, not permission to change the operator deployment. Preserve storage identity, ownership, CSRF, quotas, deletion and media privacy. Use mocked providers and isolated databases; never upload test media to production.
 

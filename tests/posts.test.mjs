@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {repository,media,limits,environment,login,request,now} from './helpers.mjs';
-import {handle} from '../backend/cloudflare/service.js';
-import {publicRecord,renderPage} from '../backend/cloudflare/views.js';
+import {handle} from '../backend/ishare/service.js';
+import {publicRecord,renderPage} from '../backend/ishare/views.js';
 import {readFile} from 'node:fs/promises';
 const ctx={waitUntil(){}};
 function upload(store,key,owner='42',kind='image'){store.reserve(media({id:key,owner,kind,duration:kind==='video'?30:0}),{...limits,images:100},now());store.attach(key,'private-provider-'+key,'https://upload.imagedelivery.net/temporary',now());store.publish(key,owner,kind==='video'?30:0,now());}

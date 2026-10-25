@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {uploadWithKey} from '../tools/upload/ai-upload.mjs';
 import {repository,environment,login,request} from './helpers.mjs';
-import {handle} from '../backend/cloudflare/service.js';
+import {handle} from '../backend/ishare/service.js';
 import {readFile} from 'node:fs/promises';
 test('Node AI client transfers image/video bytes, confirms after all transfers and emits only Markdown links',async()=>{
  const {store,database}=repository(),env={...environment(store),OWNER_GITHUB_ID:'99'},resources=new Map(),sequence=[];

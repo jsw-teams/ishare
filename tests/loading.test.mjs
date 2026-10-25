@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {digest} from '../backend/cloudflare/security.js';
-import {handle} from '../backend/cloudflare/service.js';
+import {digest} from '../backend/ishare/security.js';
+import {handle} from '../backend/ishare/service.js';
 import {repository,environment,login,request,media,limits,now} from './helpers.mjs';
 
 test('page snapshots use one DO call, preserve ownership and admin gates, and never cache private data',async()=>{

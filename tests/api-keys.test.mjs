@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {handle} from '../backend/cloudflare/service.js';
+import {handle} from '../backend/ishare/service.js';
 import {repository,environment,login,request,now,media,limits} from './helpers.mjs';
-import {digest} from '../backend/cloudflare/security.js';
+import {digest} from '../backend/ishare/security.js';
 const ctx={waitUntil(){}};
 function ai(action,key,{resource,body,origin}={}){return new Request('https://ishare.js.gripe/api',{method:body?'POST':'GET',headers:{Authorization:'Bearer '+key,'X-Service-Action':action,...(resource?{'X-Service-Resource':resource}:{}),...(body?{'Content-Type':'application/json'}:{}),...(origin?{Origin:origin}:{})},body:body?JSON.stringify(body):undefined});}
 async function keyFor(store,env,user,name='AI uploader'){return (await(await handle(request('create-api-key',{...user,body:{name,days:90}}),env,ctx)).json());}

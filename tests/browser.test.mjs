@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile,mkdir} from 'node:fs/promises';
 import {chromium} from 'playwright';
-import {defaults} from '../backend/cloudflare/quotas.js';
+import {defaults} from '../backend/ishare/quotas.js';
 
 test('browser administration uses header actions, handles reductions, exports data and works at mobile width',async()=>{
   const axe=await readFile('node_modules/axe-core/axe.min.js','utf8');const accessibility=async page=>{const viewport=page.viewportSize();for(const width of [320,1280])for(const colorScheme of ['light','dark']){await page.setViewportSize({width,height:844});await page.emulateMedia({colorScheme});await page.waitForTimeout(300);await page.addScriptTag({content:axe});const issues=await page.evaluate(async()=>{const result=await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}});return result.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}));});assert.deepEqual(issues,[],JSON.stringify({width,colorScheme,issues}));assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);}await page.setViewportSize(viewport);await page.emulateMedia({colorScheme:'light'});};

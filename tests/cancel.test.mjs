@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {extname} from 'node:path';
 import {chromium} from 'playwright';
-import {defaults} from '../backend/cloudflare/quotas.js';
+import {defaults} from '../backend/ishare/quotas.js';
 
 test('modal cancellation removes completed video and delayed image allocations without publishing',async()=>{
  const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})}),records=[],deleted=[],errors=[];let count=0,uploads=0,posts=0,release;

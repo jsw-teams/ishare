@@ -9,15 +9,14 @@
   "scripts": {
     "build": "node tools/build.mjs",
     "test": "node --test --test-concurrency=2 tests/*.test.mjs",
-    "dev": "npm run build && wrangler dev",
-    "deploy": "npm run build && wrangler deploy",
-    "deploy:cloudflare": "npm run deploy",
+    "dev": "edgepress server",
     "icons:sync": "node tools/sync-icons.mjs",
     "pages:format": "node tools/assets/format-pages.mjs",
     "test:data-saver": "node --test tests/data-saver-site.test.mjs",
     "verify:performance": "node tools/verification/page-performance.mjs"
   },
   "dependencies": {
+    "@cloud-api-shield/shield": "https://github.com/jsw-teams/api-shield/releases/download/v0.1.1/cloud-api-shield-shield-0.1.1.tgz",
     "@jsw-teams/media-viewer": "https://codeload.github.com/jsw-teams/media-viewer/tar.gz/12eb8983c2df1eabb3aaece44b232c56b4a9e1fe",
     "edgepress": "https://codeload.github.com/jsw-teams/edgepress/tar.gz/e2fa8593625c6ee1869103b7e52ebca9d838c61b"
   },

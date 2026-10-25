@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {authorize,callback,readSession} from '../backend/cloudflare/auth.js';
-import {handle} from '../backend/cloudflare/service.js';
+import {authorize,callback,readSession} from '../backend/ishare/auth.js';
+import {handle} from '../backend/ishare/service.js';
 import {repository,environment,now} from './helpers.mjs';
 
 async function start(store,env,accept='application/json'){

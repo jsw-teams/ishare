@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { chromium } from 'playwright';
-import { renderPage, renderProfile } from '../backend/cloudflare/views.js';
+import { renderPage, renderProfile } from '../backend/ishare/views.js';
 
 test('explicit text view keeps feed and profile stories without covers, avatars or preview engines, then loads one chosen picture', async () => {
   const site = 'https://ishare.js.gripe';

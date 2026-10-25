@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {extname} from 'node:path';
 import {chromium} from 'playwright';
-import {renderPage} from '../backend/cloudflare/views.js';
+import {renderPage} from '../backend/ishare/views.js';
 
 test('compact posts share through a themed accessible dialog without loading media originals or exposing permanent fields',async()=>{
  const site='https://ishare.js.gripe',id='a'.repeat(32),env={ASSETS:{fetch:async req=>new Response(await readFile('dist'+new URL(req.url).pathname))}};

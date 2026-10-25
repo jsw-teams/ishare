@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {extname} from 'node:path';
 import {chromium} from 'playwright';
-import {handle} from '../backend/cloudflare/service.js';
+import {handle} from '../backend/ishare/service.js';
 import {repository,environment,login,request} from './helpers.mjs';
 
 for(const scenario of [{name:'image then video',order:['image','video']},{name:'video then image',order:['video','image']},{name:'browser cannot decode metadata',order:['image','video'],preview:'metadata'},{name:'video upload rejected',order:['image','video'],rejected:'video'},{name:'image rejected after video completes',order:['image','video'],rejected:'image'}])test('mixed post: '+scenario.name,async()=>{

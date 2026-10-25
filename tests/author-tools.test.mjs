@@ -4,7 +4,7 @@ import {readFile,mkdir} from 'node:fs/promises';
 import {extname} from 'node:path';
 import {chromium} from 'playwright';
 import {repository,environment,login,request,now,media,limits} from './helpers.mjs';
-import {handle} from '../backend/cloudflare/service.js';
+import {handle} from '../backend/ishare/service.js';
 
 test('personal key UI, author editing, embedded previews and progressive WebMCP work across locales and mobile themes', {timeout:180000},async()=>{
  const browser=await chromium.launch({headless:true,args:['--disable-extensions']}),image=await readFile('content/assets/brand/bear-icon.3754101e8d6380da.png'),axe=await readFile('node_modules/axe-core/axe.min.js','utf8');

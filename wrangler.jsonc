@@ -1,16 +1,19 @@
 {
-  "$schema": "./node_modules/wrangler/config-schema.json",
+  "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "ishare",
-  "main": "backend/cloudflare/worker.js",
+  "main": "backend/ishare/adapters/cloudflare/worker.js",
   "compatibility_date": "2026-10-01",
   "workers_dev": false,
   "preview_urls": false,
   "keep_vars": true,
   "vars": {
-    "OWNER_GITHUB_ID": "228026986"
+    "OWNER_GITHUB_ID": "228026986",
+    "SHIELD_ALLOWED_HOSTS": [
+      "ishare.js.gripe"
+    ]
   },
   "assets": {
-    "directory": "./dist",
+    "directory": "dist",
     "binding": "ASSETS",
     "not_found_handling": "404-page",
     "run_worker_first": [
@@ -45,5 +48,6 @@
         "ShareStore"
       ]
     }
-  ]
+  ],
+  "send_metrics": false
 }

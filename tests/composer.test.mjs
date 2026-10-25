@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {readFile,mkdir} from 'node:fs/promises';
 import {extname} from 'node:path';
 import {chromium} from 'playwright';
-import {defaults} from '../backend/cloudflare/quotas.js';
-import {renderPage} from '../backend/cloudflare/views.js';
+import {defaults} from '../backend/ishare/quotas.js';
+import {renderPage} from '../backend/ishare/views.js';
 
 test('social composer uploads multiple attachments, creates one post and exports independent Markdown links',async()=>{
  const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});

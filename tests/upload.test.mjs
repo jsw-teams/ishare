@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {provider} from '../backend/cloudflare/provider.js';
+import {provider} from '../backend/ishare/provider.js';
 import {uploadFile} from '../static/ishare/upload.js';
 import {uploadAddress} from '../static/ishare/upload-address.js';
 import {repository,environment,media,limits,login,request,now} from './helpers.mjs';
-import {handle} from '../backend/cloudflare/service.js';
+import {handle} from '../backend/ishare/service.js';
 
 test('Stream REST allocation and browser validation accept the current cloudflarestream upload origin',async()=>{
  const {store,database}=repository(),env=environment(store),clock=now();

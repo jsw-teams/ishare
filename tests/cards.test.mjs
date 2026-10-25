@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile,mkdir} from 'node:fs/promises';
 import {extname} from 'node:path';
 import {chromium} from 'playwright';
-import {renderProfile} from '../backend/cloudflare/views.js';
+import {renderProfile} from '../backend/ishare/views.js';
 
 test('feed and X-style profiles load one cover for a long mixed post and omit GitHub identity labels',async()=>{
  const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})}),site='https://ishare.js.gripe',assets={ASSETS:{fetch:async req=>new Response(await readFile('dist'+new URL(req.url).pathname))}},cover=await readFile('content/assets/brand/bear-banner.ed22b23efa24f8a8.webp'),avatar=await readFile('content/assets/brand/bear-icon.3754101e8d6380da.png'),media=Array.from({length:50},(_,n)=>({id:n.toString(16).padStart(32,'0'),kind:n===0?'video':'image',title:'Attachment '+n})),post={id:'f'.repeat(32),kind:'post',caption:'山间的一个午后。'+('今天拍下了沿途的风景。'.repeat(400)),media,state:'published',created:1,published:2,author:{id:'42',name:'旅行黑熊',login:'jsw-teams'},shareUrl:site+'/s/'+ 'f'.repeat(32)};

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {deliver} from '../backend/cloudflare/delivery.js';
+import {deliver} from '../backend/ishare/delivery.js';
 import {environment} from './helpers.mjs';
 
 test('display variants are private, signed, responsive and cached by format; originals return unchanged bytes without caching',async()=>{

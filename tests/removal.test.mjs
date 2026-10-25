@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {repository,environment,media,limits,login,request,now} from './helpers.mjs';
-import {provider} from '../backend/cloudflare/provider.js';
-import {handle} from '../backend/cloudflare/service.js';
-import {removeMedia,finishRemoval} from '../backend/cloudflare/removal.js';
+import {provider} from '../backend/ishare/provider.js';
+import {handle} from '../backend/ishare/service.js';
+import {removeMedia,finishRemoval} from '../backend/ishare/removal.js';
 
 test('invalid upload destinations remove known allocations immediately and scrub failed records',async()=>{
  const {store,database}=repository(),env=environment(store),session=await login(store),id='a'.repeat(32),calls=[];

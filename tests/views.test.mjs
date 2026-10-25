@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {renderPage} from '../backend/cloudflare/views.js';
+import {renderPage} from '../backend/ishare/views.js';
 test('public and embedded media use the EdgePress shell, escape content and keep business UI out of viewers',async()=>{
  const site='https://ishare.js.gripe',env={ASSETS:{fetch:async request=>new Response(await readFile('dist'+new URL(request.url).pathname))}};
  const item={id:'a'.repeat(32),kind:'video',title:'<script>bad()</script>',caption:'Caption <img src=x onerror=bad()>',author:JSON.stringify({id:'42',name:'Author',login:'author'}),source_name:'Source',source_url:'https://example.com/original',created:1,published:2,state:'published',provider_id:'private-upstream-uid'};

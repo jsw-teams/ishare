@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {extname} from 'node:path';
 import {chromium} from 'playwright';
-import {renderPage} from '../backend/cloudflare/views.js';
-import {handle} from '../backend/cloudflare/service.js';
+import {renderPage} from '../backend/ishare/views.js';
+import {handle} from '../backend/ishare/service.js';
 import {repository,environment,media,limits,now,login} from './helpers.mjs';
 
 test('deleted Images and Stream resources return safe uncached errors and retain published records',async()=>{

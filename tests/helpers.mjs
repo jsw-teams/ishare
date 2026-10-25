@@ -1,7 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
-import { Repository } from '../backend/cloudflare/store.js';
-import {defaults} from '../backend/cloudflare/quotas.js';
-import { digest, random } from '../backend/cloudflare/security.js';
+import { Repository } from '../backend/ishare/store.js';
+import {defaults} from '../backend/ishare/quotas.js';
+import { digest, random } from '../backend/ishare/security.js';
 export function repository(initialSql=''){
   const database=new DatabaseSync(':memory:');
   if(initialSql)database.exec(initialSql);
