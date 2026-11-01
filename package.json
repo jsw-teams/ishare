@@ -22,8 +22,9 @@
   },
   "overrides": {
     "@file-viewer/doc": {
-      "dompurify": "3.4.16"
-    }
+      "dompurify": "3.4.17"
+    },
+    "undici": "7.30.1"
   },
   "devDependencies": {
     "axe-core": "^4.13.0",
